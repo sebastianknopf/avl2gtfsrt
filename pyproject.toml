@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vcc"
+description = "itcs435 - reference implementation for an Intermodal Transportation Control System based on VDV435"
+authors = [{ name = "Sebastian Knopf", email = "mail@sebastian-knopf.de" }]
+readme = "README.md"
+license = {text = "Apache License (2.0)"}
+dependencies = [
+    "click",
+    "croniter",
+    "pytz",
+    "pyyaml"
+]
+requires-python = ">=3.10"
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+vdv452import = [
+    "sqlobject",
+    "mysqlclient"
+]
+
+all = [
+    "vcc[vdv452import,mdimport,api,vdv457export]"
+]
+
+[tool.setuptools_scm]
+write_to = "src/lib/version.py"
