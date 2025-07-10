@@ -8,3 +8,28 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  worker:
+    build:
+      context: .
+      dockerfile: ./src/itcs435/worker/Dockerfile
+    container_name: worker
+    restart: unless-stopped
+    depends_on:
+      "mongo":
+        condition: service_healthy
+  server:
+    build:
+      context: .
+      dockerfile: ./src/itcs435/server/Dockerfile
+    container_name: server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      "mongo":
+        condition: service_healthy
