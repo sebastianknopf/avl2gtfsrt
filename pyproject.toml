@@ -10,23 +10,26 @@ readme = "README.md"
 license = {text = "Apache License (2.0)"}
 dependencies = [
     "click",
-    "croniter",
-    "pytz",
-    "pyyaml"
+    "pymongo",
+    "xmltodict"
 ]
 requires-python = ">=3.10"
 
 dynamic = ["version"]
 
 [project.optional-dependencies]
-vdv452import = [
-    "sqlobject",
-    "mysqlclient"
+worker = [
+    "paho-mqtt"
+]
+
+server = [
+    "fastapi",
+    "uvicorn"
 ]
 
 all = [
-    "vcc[vdv452import,mdimport,api,vdv457export]"
+    "vcc[worker,server]"
 ]
 
 [tool.setuptools_scm]
-write_to = "src/lib/version.py"
+write_to = "src/itcs435/common/version.py"
