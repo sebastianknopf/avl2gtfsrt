@@ -5,14 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug: itcs435",
+            "name": "Python Debugger",
             "type": "debugpy",
-            "request": "launch",
-            "module": "itcs435",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src"
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
             },
-            "python": "${workspaceFolder}/venv/Scripts/python.exe"
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/app"
+                }
+            ]
         }
     ]
 }

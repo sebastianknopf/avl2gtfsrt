@@ -1,5 +1,5 @@
 services:
-  mongo:
+  mongodb:
     image: mongo:latest
     container_name: mongodb
     restart: always
@@ -9,10 +9,11 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
+      test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 5s
   worker:
     build:
       context: .
@@ -20,7 +21,7 @@ services:
     container_name: worker
     restart: unless-stopped
     depends_on:
-      "mongo":
+      "mongodb":
         condition: service_healthy
   server:
     build:
@@ -31,5 +32,5 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      "mongo":
+      "mongodb":
         condition: service_healthy

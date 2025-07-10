@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vcc"
+name = "itcs435"
 description = "itcs435 - reference implementation for an Intermodal Transportation Control System based on VDV435"
 authors = [{ name = "Sebastian Knopf", email = "mail@sebastian-knopf.de" }]
 readme = "README.md"

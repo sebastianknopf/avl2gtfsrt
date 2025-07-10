@@ -1,0 +1,16 @@
+services:
+  worker:
+    entrypoint: >
+      sh -c "
+        pip install debugpy && PYTHONPATH=src python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m itcs435.worker main
+      "
+    ports:
+      - "5678:5678"
+  server:
+    entrypoint: >
+      sh -c "
+        pip install debugpy && PYTHONPATH=src python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m itcs435.server main
+      "
+    ports:
+      - "8000:8000"
+      - "5678:5678"
