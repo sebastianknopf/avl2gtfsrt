@@ -142,6 +142,28 @@ class Publisher:
         logging.getLogger('uvicorn.asgi').handlers = []
         logging.getLogger('uvicorn.asgi').propagate = False
 
+        # create log config for uvicorn
+        log_config: dict = {
+            'version': 1,
+            'disable_existing_loggers': False,
+            'formatters': {
+                'default': {
+                    'format': '[%(levelname)s] %(asctime)s %(message)s',
+                },
+            },
+            'handlers': {
+                'default': {
+                    'formatter': 'default',
+                    'class': 'logging.StreamHandler',
+                },
+            },
+            'loggers': {
+                'uvicorn': {'handlers': ['default'], 'level': 'INFO'},
+                'uvicorn.error': {'handlers': ['default'], 'level': 'INFO'},
+                'uvicorn.access': {'handlers': ['default'], 'level': 'INFO'},
+            },
+        }
+
         # run ASGI server with endpoint
         endpoint_host = self._service_local_ip_address # self._participant_config.participants[self._service_participant_ref]['host']
         endpoint_port = self._participant_config.participants[self._service_participant_ref]['port']
@@ -153,7 +175,7 @@ class Publisher:
             self._participant_config.participants[self._service_participant_ref]['subscribe_endpoint'],
             self._participant_config.participants[self._service_participant_ref]['unsubscribe_endpoint'],
             self._participant_config.participants[self._service_participant_ref]['request_endpoint']
-        ), host=endpoint_host, port=endpoint_port)
+        ), host=endpoint_host, port=endpoint_port, log_config=log_config)
 
     def _send_request(self, subscription: Subscription, siri_delivery) -> object|None:
         try:
