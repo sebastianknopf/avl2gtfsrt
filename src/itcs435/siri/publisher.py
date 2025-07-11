@@ -1,7 +1,11 @@
 import logging
+import requests
 import time
+import typing
 import uvicorn
 
+from datetime import datetime
+from datetime import timezone
 from fastapi import FastAPI
 from fastapi import BackgroundTasks
 from fastapi import APIRouter
@@ -11,10 +15,8 @@ from threading import Thread
 
 from itcs435.siri.datalog import Datalog
 from itcs435.siri.participantconfig import ParticipantConfig
+from itcs435.siri.subscription import Subscription
 
-class SiriServer:
-    
-    pass
 
 class Publisher:
     def __init__(self, participant_ref: str, participant_config_filename: str, local_ip_address: str = '0.0.0.0', datalog_directory: str|None = None):
@@ -46,7 +48,7 @@ class Publisher:
             self._local_node_database.close(True)"""
         
     def start(self) -> None:
-        self._endpoint_thread = Thread(target=self._run_endpoint, args=(), daemon=True)
+        self._endpoint_thread = Thread(target=self._run_endpoint, args=(), name='siri-publisher-endpoint', daemon=True)
         self._endpoint_thread.start()
 
         time.sleep(0.01) # give the endpoint thread time for startup
@@ -142,15 +144,17 @@ class Publisher:
             self._participant_config.participants[self._service_participant_ref]['request_endpoint']
         ), host=endpoint_host, port=endpoint_port)
 
-    def _send_request(self, subscription: Subscription, siri_delivery: ServiceDelivery) -> SiriResponse|None:
+    def _send_request(self, subscription: Subscription, siri_delivery) -> object|None:
         try:
             subscription_host = self._participant_config.participants[subscription.subscriber]['host']
             subscription_port = self._participant_config.participants[subscription.subscriber]['port']
             subscription_protocol = self._participant_config.participants[subscription.subscriber]['protocol']
             
-            if isinstance(siri_delivery, SituationExchangeDelivery):
+            """if isinstance(siri_delivery, SituationExchangeDelivery):
                 delivery_endpoint = self._participant_config.participants[subscription.subscriber]['single_endpoint'] if self._participant_config.participants[subscription.subscriber]['single_endpoint'] is not None else self._participant_config.participants[subscription.subscriber]['delivery_endpoint']
-                endpoint = f"{subscription_protocol}://{subscription_host}:{subscription_port}{delivery_endpoint}"
+                endpoint = f"{subscription_protocol}://{subscription_host}:{subscription_port}{delivery_endpoint}"""
+            
+            endpoint = ""
 
             headers = {
                 "Content-Type": "application/xml"
@@ -172,7 +176,7 @@ class Publisher:
                     'headers': headers
                 }, self._service_participant_ref, 'OUT', type(siri_delivery).__name__, 'Response')
 
-            response = xml2siri_response(response_xml.content)
+            response = ""#xml2siri_response(response_xml.content)
 
             return response
         except Exception as ex:
@@ -183,7 +187,7 @@ class PublisherEndpoint():
 
     def __init__(self, participant_ref: str, datalog_directory: str|None = None):
         self._service_participant_ref = participant_ref
-        self._service_startup_time = timestamp()
+        self._service_startup_time = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         self._logger = logging.getLogger('uvicorn')
         self._datalog = datalog_directory
 
@@ -219,7 +223,8 @@ class PublisherEndpoint():
         return self._endpoint
     
     def terminate(self):
-        self._local_node_database.close()
+        #self._local_node_database.close()
+        pass
     
     async def _dispatcher(self, req: Request, bgt: BackgroundTasks) -> Response:
         body = str(await req.body())
@@ -305,11 +310,11 @@ class PublisherEndpoint():
                 response.error(subscription_id)"""
 
             if self._datalog is not None:
-                Datalog.create(self._datalog, response.xml(), {
+                """Datalog.create(self._datalog, response.xml(), {
                     'method': req.method,
                     'endpoint': str(req.url),
                     'headers': dict(req.headers)
-                }, self._service_participant_ref, 'IN', 'SituationExchangeSubscriptionRequest', 'Response')
+                }, self._service_participant_ref, 'IN', 'SituationExchangeSubscriptionRequest', 'Response')"""
 
             #return Response(content=response.xml(), media_type='application/xml')
             return Response(content=None, media_type='application/xml')

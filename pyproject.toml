@@ -15,6 +15,7 @@ dependencies = [
     "paho-mqtt",
     "pymongo",
     "pyyaml",
+    "requests",
     "uvicorn",
     "xmltodict"
 ]

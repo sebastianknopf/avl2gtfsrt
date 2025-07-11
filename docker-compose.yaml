@@ -21,7 +21,7 @@ services:
     container_name: worker
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${ITCS435_PUBLISHER_ENDPOINT_PORT}:${ITCS435_PUBLISHER_ENDPOINT_PORT}"
     environment:
       - ITCS435_DEBUG
       - ITCS435_WORKER_MQTT_HOST

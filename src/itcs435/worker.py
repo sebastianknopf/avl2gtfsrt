@@ -68,11 +68,10 @@ class IomWorker:
         except Exception as ex:
             logging.error(f"Exception in worker: {ex}")
         finally:
-            
-            logging.info("Shutting down SIRI publisher ...")
-            self._publisher.stop(None, None, None)
 
+            logging.info("Shutting down MQTT connection...")
             self._mqtt.loop_stop()
             self._mqtt.disconnect()
 
-            logging.info("Shutting down MQTT connection...")
+            logging.info("Shutting down SIRI publisher ...")
+            self._publisher.stop()

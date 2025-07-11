@@ -11,6 +11,7 @@ COPY pyproject.toml /app
 RUN pip install --no-cache-dir .
 RUN pip install debugpy
 
+COPY ./config /app/config
 COPY src/ /app/src
 RUN pip install --no-deps .
 

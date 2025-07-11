@@ -5,5 +5,4 @@ services:
     entrypoint: >
       python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m itcs435 main
     ports:
-      - "8000:8000"
       - "5678:5678"
