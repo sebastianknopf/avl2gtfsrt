@@ -3,11 +3,11 @@ services:
     image: mongo:latest
     container_name: mongodb
     restart: always
-    ports:
-      - "27017:27017"
+    expose:
+      - "27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_ROOT_USERNAME: ${ITCS435_MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${ITCS435_MONGODB_PASSWORD}
     healthcheck:
       test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
@@ -28,6 +28,12 @@ services:
       - ITCS435_WORKER_MQTT_PORT
       - ITCS435_WORKER_MQTT_USERNAME
       - ITCS435_WORKER_MQTT_PASSWORD
+      - ITCS435_PUBLISHER_PARTICIPANT_REF
+      - ITCS435_PUBLISHER_PARTICIPANT_CONFIG_FILENAME
+      - ITCS435_PUBLISHER_ENDPOINT_PORT
+      - ITCS435_PUBLISHER_DATALOG_DIRECTORY
+      - ITCS435_MONGODB_USERNAME
+      - ITCS435_MONGODB_PASSWORD
     depends_on:
       "mongodb":
         condition: service_healthy
