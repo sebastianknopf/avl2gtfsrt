@@ -54,8 +54,8 @@ class IomWorker:
                 pass
         except Exception as ex:
             logging.error(f"Exception in worker: {ex}")
-        finally:
-            logging.info("Shutting down MQTT connection...")
-            
+        finally:            
             self._mqtt.loop_stop()
             self._mqtt.disconnect()
+
+            logging.info("Shutting down MQTT connection...")
