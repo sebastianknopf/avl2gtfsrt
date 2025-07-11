@@ -1,8 +1,11 @@
 import logging
+import os
 import signal
 import threading
 
 from paho.mqtt import client as mqtt
+
+from itcs435.siri.publisher import Publisher
 
 class IomWorker:
 
@@ -15,6 +18,12 @@ class IomWorker:
         self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
         self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
+
+        self._publisher = Publisher(
+            os.getenv('ITCS435_PUBLISHER_PARTICIPANT_REF', 'PY_TEST_PUBLISHER'),
+            os.getenv('ITCS435_PUBLISHER_PARTICIPANT_CONFIG_FILENAME', './config/participants.yaml'),
+            datalog_directory=os.getenv('ITCS435_PUBLISHER_DATALOG_DIRECTORY', 'datalog')
+        )
         
         self._should_run = threading.Event()
         self._should_run.set()
@@ -48,13 +57,21 @@ class IomWorker:
         self._mqtt.connect(self._mqtt_host, int(self._mqtt_port))
         self._mqtt.loop_start()
 
+        # start publisher server
+        logging.info("Starting SIRI publisher ...")
+        self._publisher.start()
+
         try:
             # watch self._should_run for stopping gracefully
             while self._should_run.is_set():
                 pass
         except Exception as ex:
             logging.error(f"Exception in worker: {ex}")
-        finally:            
+        finally:
+            
+            logging.info("Shutting down SIRI publisher ...")
+            self._publisher.stop(None, None, None)
+
             self._mqtt.loop_stop()
             self._mqtt.disconnect()
 

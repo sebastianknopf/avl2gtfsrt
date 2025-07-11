@@ -8,11 +8,11 @@ COPY .git/ /app/.git
 RUN mkdir -p /app/src/itcs435/common
 
 COPY pyproject.toml /app
-RUN pip install --no-cache-dir .[worker]
+RUN pip install --no-cache-dir .
 RUN pip install debugpy
 
 COPY src/ /app/src
-RUN pip install --no-deps .[worker]
+RUN pip install --no-deps .
 
 STOPSIGNAL SIGTERM
 

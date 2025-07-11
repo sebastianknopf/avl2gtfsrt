@@ -35,7 +35,17 @@ class Publisher:
         self._on_unsubscribe = None
 
     def __enter__(self):
+        self.start()
+
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+        self.stop()
+
+        """if self._local_node_database is not None:
+            self._local_node_database.close(True)"""
         
+    def start(self) -> None:
         self._endpoint_thread = Thread(target=self._run_endpoint, args=(), daemon=True)
         self._endpoint_thread.start()
 
@@ -49,17 +59,12 @@ class Publisher:
             on_unsubscribe_callback=self._on_unsubscribe_internal
         )
 
-        return self
-
-    def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+    def stop(self) -> None:
         if self._endpoint is not None:
             self._endpoint.terminate()
         
         if self._endpoint_thread is not None:
             self._endpoint_thread.join(1)
-
-        """if self._local_node_database is not None:
-            self._local_node_database.close(True)"""
     
     """def set_callbacks(self, on_status_callback: typing.Callable[[], None]|None = None, on_subscribe_callback: typing.Callable[[Subscription], None]|None = None, on_unsubscribe_callback: typing.Callable[[Subscription], None]|None = None, on_request_callback: typing.Callable[[], None]|None = None) -> None:
         self._on_subscribe = on_subscribe_callback

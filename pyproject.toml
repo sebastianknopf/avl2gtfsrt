@@ -10,26 +10,17 @@ readme = "README.md"
 license = {text = "Apache License (2.0)"}
 dependencies = [
     "click",
+    "fastapi",
+    "lxml",
+    "paho-mqtt",
     "pymongo",
+    "pyyaml",
+    "uvicorn",
     "xmltodict"
 ]
 requires-python = ">=3.10"
 
 dynamic = ["version"]
-
-[project.optional-dependencies]
-worker = [
-    "paho-mqtt"
-]
-
-server = [
-    "fastapi",
-    "uvicorn"
-]
-
-all = [
-    "vcc[worker,server]"
-]
 
 [tool.setuptools_scm]
 write_to = "src/itcs435/common/version.py"
