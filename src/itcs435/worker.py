@@ -11,6 +11,12 @@ from itcs435.siri.publisher import Publisher
 class IomWorker:
 
     def __init__(self) -> None:
+        
+        self._tls_itcs_inbox: str = os.getenv('ITCS435_ITCS_INBOX_TLS', None)
+        self._tls_vehicle_inbox: str = os.getenv('ITCS435_VEHICLE_INBOX_TLS', None)
+        self._tls_vehicle_physical_position: str = os.getenv('ITCS435_VEHICLE_PHYSICAL_POSITION_TLS', None)
+        self._tls_vehicle_logical_position: str = os.getenv('ITCS435_VEHICLE_LOGICAL_POSITION_TLS', None)
+        
         self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
         self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
@@ -32,14 +38,34 @@ class IomWorker:
 
     def _on_connect(self, client, userdata, flags, rc, properties):
         if not rc.is_failure:
-            self._mqtt.subscribe("#", qos=1)
+            if self._tls_itcs_inbox is not None:
+                logging.info(f"Subscribing to ITCS inbox topic: {self._tls_itcs_inbox}")
+                self._mqtt.subscribe(self._tls_itcs_inbox, qos=1)
+            
+            if self._tls_vehicle_physical_position is not None:
+                logging.info(f"Subscribing to vehicle physical position topic: {self._tls_vehicle_physical_position}")
+                self._mqtt.subscribe(self._tls_vehicle_physical_position, qos=1)
+
+            if self._tls_vehicle_logical_position is not None:
+                logging.info(f"Subscribing to vehicle logical position topic: {self._tls_vehicle_logical_position}")
+                self._mqtt.subscribe(self._tls_vehicle_logical_position, qos=1)
 
     def _on_message(self, client, userdata, message):
         logging.info(f"Received message on topic {message.topic}")
         # Process the message as needed
 
     def _on_disconnect(self, client, userdata, flags, rc, properties):
-        self._mqtt.unsubscribe("#")
+        if self._tls_itcs_inbox is not None:
+            logging.info(f"Unsubscribing from ITCS inbox topic: {self._tls_itcs_inbox}")
+            self._mqtt.unsubscribe(self._tls_itcs_inbox, qos=1)
+
+        if self._tls_vehicle_physical_position is not None:
+            logging.info(f"Unsubscribing from vehicle physical position topic: {self._tls_vehicle_physical_position}")
+            self._mqtt.unsubscribe(self._tls_vehicle_physical_position, qos=1)
+
+        if self._tls_vehicle_logical_position is not None:
+            logging.info(f"Unsubscribing from vehicle logical position topic: {self._tls_vehicle_logical_position}")
+            self._mqtt.unsubscribe(self._tls_vehicle_logical_position, qos=1)
 
     def run(self) -> None:
         # register signal handlers for graceful shutdown
