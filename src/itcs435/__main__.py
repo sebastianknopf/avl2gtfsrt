@@ -3,7 +3,7 @@ import click
 import logging
 
 from itcs435.common.env import is_debug
-from itcs435.worker.iom import IomWorker
+from itcs435.worker import IomWorker
 
 def run():
     

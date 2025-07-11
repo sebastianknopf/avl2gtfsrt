@@ -16,4 +16,4 @@ RUN pip install --no-deps .[worker]
 
 STOPSIGNAL SIGTERM
 
-ENTRYPOINT ["python", "-m", "itcs435.worker", "main"]
+ENTRYPOINT ["python", "-m", "itcs435", "main"]

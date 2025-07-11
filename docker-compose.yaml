@@ -17,24 +17,17 @@ services:
   worker:
     build:
       context: .
-      dockerfile: ./src/itcs435/worker/Dockerfile
+      dockerfile: ./Dockerfile
     container_name: worker
-    restart: unless-stopped
-    environment:
-      - ITCS435_DEBUG
-    depends_on:
-      "mongodb":
-        condition: service_healthy
-  server:
-    build:
-      context: .
-      dockerfile: ./src/itcs435/server/Dockerfile
-    container_name: server
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       - ITCS435_DEBUG
+      - ITCS435_WORKER_MQTT_HOST
+      - ITCS435_WORKER_MQTT_PORT
+      - ITCS435_WORKER_MQTT_USERNAME
+      - ITCS435_WORKER_MQTT_PASSWORD
     depends_on:
       "mongodb":
         condition: service_healthy
