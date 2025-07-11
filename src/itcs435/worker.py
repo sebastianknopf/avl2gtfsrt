@@ -4,17 +4,13 @@ import signal
 import threading
 
 from paho.mqtt import client as mqtt
+from pymongo import MongoClient
 
 from itcs435.siri.publisher import Publisher
 
 class IomWorker:
 
-    def __init__(self, mqtt_host, mqtt_port, mqtt_username, mqtt_password) -> None:
-        self._mqtt_host = mqtt_host
-        self._mqtt_port = mqtt_port
-        self._mqtt_username = mqtt_username
-        self._mqtt_password = mqtt_password
-
+    def __init__(self) -> None:
         self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
         self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
@@ -25,6 +21,8 @@ class IomWorker:
             datalog_directory=os.getenv('ITCS435_PUBLISHER_DATALOG_DIRECTORY', 'datalog')
         )
         
+        self._mdb: MongoClient = None
+
         self._should_run = threading.Event()
         self._should_run.set()
 
@@ -48,13 +46,25 @@ class IomWorker:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
+        # connect to local MongoDB
+        mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
+        mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
+
+        logging.info("Connecting to MongoDB ...")
+        self._mdb = MongoClient(f"mongodb://{mongodb_username}:{mongodb_password}@mongodb:27017")
+
         # set username and password if provided
-        if self._mqtt_username is not None and self._mqtt_password is not None:
-            self._mqtt.username_pw_set(username=self._mqtt_username, password=self._mqtt_password)
+        mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
+        mqtt_password: str = os.getenv('ITCS435_WORKER_MQTT_PASSWORD', None)
+        if mqtt_username is not None and mqtt_password is not None:
+            self._mqtt.username_pw_set(username=mqtt_username, password=mqtt_password)
 
         # connect to MQTT broker
-        logging.info(f"Connecting to MQTT broker at {self._mqtt_host}:{self._mqtt_port}")
-        self._mqtt.connect(self._mqtt_host, int(self._mqtt_port))
+        mqtt_host: str = os.getenv('ITCS435_WORKER_MQTT_HOST', 'test.mosquitto.org')
+        mqtt_port: str = os.getenv('ITCS435_WORKER_MQTT_PORT', '1883')
+
+        logging.info(f"Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
+        self._mqtt.connect(mqtt_host, int(mqtt_port))
         self._mqtt.loop_start()
 
         # start publisher server
@@ -75,3 +85,6 @@ class IomWorker:
 
             logging.info("Shutting down SIRI publisher ...")
             self._publisher.stop()
+
+            logging.info("Closing MongoDB connection ...")
+            self._mdb.close()

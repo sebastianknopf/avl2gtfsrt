@@ -8,18 +8,7 @@ from itcs435.worker import IomWorker
 def run():
     
     try:
-        mqtt_host = os.getenv('ITCS435_WORKER_MQTT_HOST', 'test.mosquitto.org')
-        mqtt_port = os.getenv('MQTT_PORT', '1883')
-        mqtt_username = os.getenv('MQTT_USERNAME', None)
-        mqtt_password = os.getenv('MQTT_PASSWORD', None)
-
-        worker: IomWorker = IomWorker(
-            mqtt_host=mqtt_host,
-            mqtt_port=mqtt_port,
-            mqtt_username=mqtt_username,
-            mqtt_password=mqtt_password
-        )
-
+        worker: IomWorker = IomWorker()
         worker.run()
     except Exception as ex:
         if is_debug():

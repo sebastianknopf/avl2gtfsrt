@@ -48,7 +48,7 @@ class Publisher:
             self._local_node_database.close(True)"""
         
     def start(self) -> None:
-        self._endpoint_thread = Thread(target=self._run_endpoint, args=(), name='siri-publisher-endpoint', daemon=True)
+        self._endpoint_thread = Thread(target=self._run_endpoint, args=(), name='siri_publisher_endpoint_thread', daemon=True)
         self._endpoint_thread.start()
 
         time.sleep(0.01) # give the endpoint thread time for startup
