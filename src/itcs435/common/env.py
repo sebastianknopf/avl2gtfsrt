@@ -7,4 +7,4 @@ def is_set(variable_name: str) -> bool:
     return variable_value == 'true' or variable_value == '1'
 
 def is_debug() -> bool:
-    return is_set('VCC_DEBUG')
+    return is_set('ITCS435_DEBUG')
