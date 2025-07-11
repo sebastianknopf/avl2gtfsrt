@@ -1,4 +1,5 @@
 import logging
+import os
 import requests
 import time
 import typing
@@ -11,6 +12,7 @@ from fastapi import BackgroundTasks
 from fastapi import APIRouter
 from fastapi import Request
 from fastapi import Response
+from pymongo import MongoClient
 from threading import Thread
 
 from itcs435.siri.datalog import Datalog
@@ -26,7 +28,9 @@ class Publisher:
 
         self._logger = logging.getLogger('uvicorn')
 
-        #self._local_node_database = local_node_database('vdv736.publisher')
+        mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
+        mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
+        self._mdb: MongoClient = MongoClient(f"mongodb://{mongodb_username}:{mongodb_password}@mongodb:27017")
 
         try:
             self._participant_config = ParticipantConfig(participant_config_filename)
@@ -43,17 +47,14 @@ class Publisher:
 
     def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
         self.stop()
-
-        """if self._local_node_database is not None:
-            self._local_node_database.close(True)"""
         
     def start(self) -> None:
         self._endpoint_thread = Thread(target=self._run_endpoint, args=(), name='siri_publisher_endpoint_thread', daemon=True)
         self._endpoint_thread.start()
 
-        time.sleep(0.01) # give the endpoint thread time for startup
+        time.sleep(0.1) # give the endpoint thread time for startup
         self._logger.info(f"Publisher running at {self._participant_config.participants[self._service_participant_ref]['host']}:{self._participant_config.participants[self._service_participant_ref]['port']}")
-        #self._logger.info(f"Local node database at {self._local_node_database._filename}")
+        self._logger.info(f"MongoDB connected at {self._mdb.address[0]}:{self._mdb.address[1]}")
 
         # set internal callbacks
         self._endpoint.set_callbacks(
@@ -68,7 +69,7 @@ class Publisher:
         if self._endpoint_thread is not None:
             self._endpoint_thread.join(1)
     
-    """def set_callbacks(self, on_status_callback: typing.Callable[[], None]|None = None, on_subscribe_callback: typing.Callable[[Subscription], None]|None = None, on_unsubscribe_callback: typing.Callable[[Subscription], None]|None = None, on_request_callback: typing.Callable[[], None]|None = None) -> None:
+    def set_callbacks(self, on_status_callback: typing.Callable[[], None]|None = None, on_subscribe_callback: typing.Callable[[Subscription], None]|None = None, on_unsubscribe_callback: typing.Callable[[Subscription], None]|None = None, on_request_callback: typing.Callable[[], None]|None = None) -> None:
         self._on_subscribe = on_subscribe_callback
         self._on_unsubscribe = on_unsubscribe_callback
 
@@ -77,7 +78,7 @@ class Publisher:
             on_subscribe_callback=self._on_subscribe_internal,
             on_unsubscribe_callback=self._on_unsubscribe_internal, 
             on_request_callback=on_request_callback
-        )"""
+        )
 
     """def publish_situation(self, situation: PublicTransportSituation) -> None:
         situation_id = sirixml_get_value(situation, 'SituationNumber')
@@ -94,6 +95,12 @@ class Publisher:
             else:
                 self._logger.error(f"Failed to send delivery for subscription {subscription.id} to {subscription.subscriber}")"""
 
+    def publish_vehicle_activity(self) -> None:
+        pass
+
+    def publish_vehicle_activity_cancellation(self) -> None:
+        pass
+    
     def _on_subscribe_internal(self, subscription: Subscription) -> None:
         
         # send initial load here
@@ -106,20 +113,24 @@ class Publisher:
         if sirixml_get_value(response, 'Siri.DataReceivedAcknowledgement.Status', False):
             self._logger.info(f"Sent initial load delivery for subscription {subscription.id} to {subscription.subscriber} successfully")
         else:
-            self._logger.error(f"Failed to send initial load delivery for subscription {subscription.id} to {subscription.subscriber}")
+            self._logger.error(f"Failed to send initial load delivery for subscription {subscription.id} to {subscription.subscriber}")"""
 
         # call external callback method
         if self._on_subscribe is not None:
-            self._on_subscribe(subscription)"""
+            self._on_subscribe(subscription)
 
     def _on_unsubscribe_internal(self, subscription: Subscription) -> None:
 
-        """# call external callback method
+        # call external callback method
         if self._on_unsubscribe is not None:
-            self._on_unsubscribe(subscription)"""
+            self._on_unsubscribe(subscription)
     
     def _run_endpoint(self) -> None:
-        self._endpoint = PublisherEndpoint(self._service_participant_ref, self._datalog)
+        self._endpoint = PublisherEndpoint(
+            self._mdb,
+            self._service_participant_ref, 
+            self._datalog
+        )
 
         # disable uvicorn logs
         logging.getLogger('uvicorn.error').handlers = []
@@ -185,7 +196,7 @@ class Publisher:
 
 class PublisherEndpoint():
 
-    def __init__(self, participant_ref: str, datalog_directory: str|None = None):
+    def __init__(self, mongodb_client: MongoClient, participant_ref: str, datalog_directory: str|None = None):
         self._service_participant_ref = participant_ref
         self._service_startup_time = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         self._logger = logging.getLogger('uvicorn')
@@ -194,7 +205,7 @@ class PublisherEndpoint():
         self._router = APIRouter()
         self._endpoint = FastAPI()
 
-        #self._local_node_database = local_node_database('vdv736.publisher')
+        self._mdb = mongodb_client
         
         self._on_status = None
         self._on_subscribe = None
@@ -223,8 +234,7 @@ class PublisherEndpoint():
         return self._endpoint
     
     def terminate(self):
-        #self._local_node_database.close()
-        pass
+        self._mdb.close()
     
     async def _dispatcher(self, req: Request, bgt: BackgroundTasks) -> Response:
         body = str(await req.body())
