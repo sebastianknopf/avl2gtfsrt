@@ -9,9 +9,11 @@ RUN mkdir -p /app/src/itcs435/common
 
 COPY pyproject.toml /app
 RUN pip install --no-cache-dir .[server]
+RUN pip install debugpy
 
 COPY src/ /app/src
 RUN pip install --no-deps .[server]
 
-ENTRYPOINT ["python"]
-CMD ["-m", "itcs435.server", "main"]
+STOPSIGNAL SIGTERM
+
+ENTRYPOINT ["python", "-m", "itcs435.server", "main"]
