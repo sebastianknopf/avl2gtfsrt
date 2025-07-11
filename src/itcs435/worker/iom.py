@@ -13,6 +13,7 @@ class IomWorker:
         self._mqtt_password = mqtt_password
 
         self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
+        self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
         
         self._should_run = threading.Event()
@@ -22,9 +23,16 @@ class IomWorker:
         logging.info(f'Received signal {signum}')
         self._should_run.clear()
 
+    def _on_connect(self, client, userdata, flags, rc, properties):
+        if not rc.is_failure:
+            self._mqtt.subscribe("#", qos=1)
+
     def _on_message(self, client, userdata, message):
-        logging.info(f"Received message on topic {message.topic}: {message.payload.decode()}")
+        logging.info(f"Received message on topic {message.topic}")
         # Process the message as needed
+
+    def _on_disconnect(self, client, userdata, flags, rc, properties):
+        self._mqtt.unsubscribe("#")
 
     def run(self) -> None:
         # register signal handlers for graceful shutdown
@@ -38,9 +46,6 @@ class IomWorker:
         # connect to MQTT broker
         logging.info(f"Connecting to MQTT broker at {self._mqtt_host}:{self._mqtt_port}")
         self._mqtt.connect(self._mqtt_host, int(self._mqtt_port))
-
-        self._mqtt.subscribe("#", qos=1)
-
         self._mqtt.loop_start()
 
         try:
@@ -51,8 +56,6 @@ class IomWorker:
             logging.error(f"Exception in worker: {ex}")
         finally:
             logging.info("Shutting down MQTT connection...")
+            
             self._mqtt.loop_stop()
-
-            self._mqtt.unsubscribe("#")
-
             self._mqtt.disconnect()
