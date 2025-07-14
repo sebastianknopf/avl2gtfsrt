@@ -4,10 +4,9 @@ import re
 from paho.mqtt import client as mqtt
 from pymongo import MongoClient
 
-from itcs435.vdv435 import AbstractBasicStructure
-from itcs435.vdv435 import AbstractMessageStructure
-from itcs435.vdv435 import Serializable
-from itcs435.vdv435 import TestParentClassStructure, TestSubClassStructure
+from itcs435.serialization import Serializable
+from itcs435.vdv435 import AbstractBasicStructure, AbstractMessageStructure
+from itcs435.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
 from itcs435.siri.publisher import Publisher
 
 class IoM:
@@ -50,7 +49,24 @@ class IoM:
             raise LookupError(f"Request CorrelationId not found in topic {topic}")
         
         # handle request based on the topic
+        msg: AbstractBasicStructure = Serializable.load(payload)
+
+        # check if the message is subclass of AbstractMessageStructure
+        # other classes are not meant to be used in request / response pattern
+        if not issubclass(msg.__class__, AbstractMessageStructure):
+            raise TypeError(f"{msg.__class__.__name__} is not subclass of AbstractMessageStructure and not usable in Request/Response")
         
+        # handle request
+        if isinstance(msg, TechnicalVehicleLogOnRequestStructure):
+            print(msg.vehicle_ref.value)
+            print(msg.xml())
+
+            res: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
+
+            print(res.xml())
+
+
+
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
         pass
