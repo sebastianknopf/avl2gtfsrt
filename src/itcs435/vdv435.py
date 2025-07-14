@@ -1,3 +1,5 @@
+import json
+
 from xmltodict import parse, unparse
 
 def attributes(**attributes):
@@ -21,6 +23,14 @@ class AbstractBasicStructure():
             setattr(self, key, value)
 
     def xml(self):
+        
+        json: str = self.json()
+        data: dict = json.loads(json)
+
+        xml: str = unparse({data}, pretty=True)
+        return xml
+    
+    def json(self):
         attributes: dict = getattr(self.__class__, "_attributes", {})
         
         data:dict = {}
@@ -30,13 +40,16 @@ class AbstractBasicStructure():
         class_name: str = self.__class__.__name__
         class_name = class_name.replace('Structure', '')
 
-        xml: str = unparse({class_name: data}, pretty=True)
+        json: str = json.dumps({class_name: data}, indent=4, ensure_ascii=False)
 
-        return xml
-    
+        return json
+
     @classmethod
-    def load(cls, xml: str):
-        data: dict = parse(xml)
+    def load(cls, raw: str):
+        try:
+            data: dict = json.loads(raw)
+        except json.JSONDecodeError:
+            data: dict = parse(raw)
         
         class_name: str = next(iter(data))
         if not class_name.endswith('Structure'):
@@ -44,8 +57,8 @@ class AbstractBasicStructure():
         
         cls = globals()[class_name]
 
-        data = data[class_name.replace('Structure', '')]
-
+        data = data[class_name]
+        
         attributes:dict = getattr(cls, "_attributes", {})
         arguments:dict = {attr: data[alias] for attr, alias in attributes.items() if alias in data}
 
