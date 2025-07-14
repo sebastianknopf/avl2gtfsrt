@@ -30,13 +30,28 @@ class IoM:
     
     def process(self, topic: str, payload: bytes) -> None:
         if self._topic_matches(topic, self._tls_sub_itcs_inbox[0]):
-            logging.info(f"Processing message on topic: {topic}")
+            self._handle_request(topic, payload)
         else:
-            logging.warning(f"Received P/S topic: {topic}")
+            self._handle_message(topic, payload)
 
     def terminate(self) -> None:
         pass
 
+    def _handle_request(self, topic: str, payload: bytes) -> None:
+        # lookup for correlation ID in the topic
+        topic_components: list[str] = topic.split('/')
+        if 'CorrelationId' in topic_components:
+            correlation_id: str = topic_components[topic_components.index('CorrelationId') + 1]
+        else:
+            raise LookupError(f"Request CorrelationId not found in topic {topic}")
+        
+        # handle request based on the topic
+        
+
+
+    def _handle_message(self, topic: str, payload: bytes) -> None:
+        pass
+    
     def _topic_matches(self, topic: str, pattern: str) -> bool:
         regex = re.escape(pattern)
         regex = regex.replace(r'\+', '[^/]+')
