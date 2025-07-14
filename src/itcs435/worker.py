@@ -6,6 +6,7 @@ import threading
 from paho.mqtt import client as mqtt
 from pymongo import MongoClient
 
+from itcs435.common.env import is_debug
 from itcs435.iom import IoM
 from itcs435.siri.publisher import Publisher
 
@@ -50,7 +51,13 @@ class IomWorker:
                 self._mqtt.subscribe(topic, qos=qos)
 
     def _on_message(self, client, userdata, message):
-        self._iom.process(message.topic, message.payload)
+        try:
+            self._iom.process(message.topic, message.payload)
+        except Exception as ex:
+            if is_debug():
+                logging.exception(ex)
+            else:
+                logging.error(str(ex))
 
     def _on_disconnect(self, client, userdata, flags, rc, properties):
         for topic, qos in self._iom.get_subscribed_topics():
