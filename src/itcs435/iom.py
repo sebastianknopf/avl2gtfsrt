@@ -1,3 +1,4 @@
+import logging
 import re
 
 from paho.mqtt import client as mqtt
@@ -28,7 +29,10 @@ class IoM:
         ]
     
     def process(self, topic: str, payload: bytes) -> None:
-        pass
+        if self._topic_matches(topic, self._tls_sub_itcs_inbox[0]):
+            logging.info(f"Processing message on topic: {topic}")
+        else:
+            logging.warning(f"Received P/S topic: {topic}")
 
     def terminate(self) -> None:
         pass

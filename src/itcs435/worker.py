@@ -87,6 +87,8 @@ class IomWorker:
         logging.info("Starting SIRI publisher ...")
         self._publisher.start()
 
+        logging.info("Worker startup complete.")
+
         try:
             # watch self._should_run for stopping gracefully
             while self._should_run.is_set():
@@ -106,3 +108,5 @@ class IomWorker:
 
             logging.info("Closing MongoDB connection ...")
             self._mdb.close()
+
+            logging.info("Worker shutdown complete.")
