@@ -6,18 +6,17 @@ import threading
 from paho.mqtt import client as mqtt
 from pymongo import MongoClient
 
+from itcs435.iom import IoM
 from itcs435.siri.publisher import Publisher
 
 class IomWorker:
 
     def __init__(self) -> None:
         
-        self._tls_itcs_inbox: str = os.getenv('ITCS435_ITCS_INBOX_TLS', None)
-        self._tls_vehicle_inbox: str = os.getenv('ITCS435_VEHICLE_INBOX_TLS', None)
-        self._tls_vehicle_physical_position: str = os.getenv('ITCS435_VEHICLE_PHYSICAL_POSITION_TLS', None)
-        self._tls_vehicle_logical_position: str = os.getenv('ITCS435_VEHICLE_LOGICAL_POSITION_TLS', None)
-        
-        self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
+        self._organisation_id: str = os.getenv('ITCS435_ORGANISATION_ID', 'TEST')
+        self._itcs_id: str = os.getenv('ITCS435_ITCS_ID', '1')
+
+        self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
         self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
 
@@ -29,6 +28,14 @@ class IomWorker:
         
         self._mdb: MongoClient = None
 
+        self._iom: IoM = IoM(
+            organisation_id=self._organisation_id,
+            itcs_id=self._itcs_id,
+            mqtt_client=self._mqtt,
+            mongo_client=self._mdb,
+            siri_publisher=self._publisher
+        )
+
         self._should_run = threading.Event()
         self._should_run.set()
 
@@ -38,34 +45,17 @@ class IomWorker:
 
     def _on_connect(self, client, userdata, flags, rc, properties):
         if not rc.is_failure:
-            if self._tls_itcs_inbox is not None:
-                logging.info(f"Subscribing to ITCS inbox topic: {self._tls_itcs_inbox}")
-                self._mqtt.subscribe(self._tls_itcs_inbox, qos=1)
-            
-            if self._tls_vehicle_physical_position is not None:
-                logging.info(f"Subscribing to vehicle physical position topic: {self._tls_vehicle_physical_position}")
-                self._mqtt.subscribe(self._tls_vehicle_physical_position, qos=1)
-
-            if self._tls_vehicle_logical_position is not None:
-                logging.info(f"Subscribing to vehicle logical position topic: {self._tls_vehicle_logical_position}")
-                self._mqtt.subscribe(self._tls_vehicle_logical_position, qos=1)
+            for topic, qos in self._iom.get_subscribed_topics():
+                logging.info(f"Subscribing to topic: {topic}")
+                self._mqtt.subscribe(topic, qos=qos)
 
     def _on_message(self, client, userdata, message):
-        logging.info(f"Received message on topic {message.topic}")
-        # Process the message as needed
+        self._iom.process(message.topic, message.payload)
 
     def _on_disconnect(self, client, userdata, flags, rc, properties):
-        if self._tls_itcs_inbox is not None:
-            logging.info(f"Unsubscribing from ITCS inbox topic: {self._tls_itcs_inbox}")
-            self._mqtt.unsubscribe(self._tls_itcs_inbox, qos=1)
-
-        if self._tls_vehicle_physical_position is not None:
-            logging.info(f"Unsubscribing from vehicle physical position topic: {self._tls_vehicle_physical_position}")
-            self._mqtt.unsubscribe(self._tls_vehicle_physical_position, qos=1)
-
-        if self._tls_vehicle_logical_position is not None:
-            logging.info(f"Unsubscribing from vehicle logical position topic: {self._tls_vehicle_logical_position}")
-            self._mqtt.unsubscribe(self._tls_vehicle_logical_position, qos=1)
+        for topic, qos in self._iom.get_subscribed_topics():
+            logging.info(f"Unsubscribing from topic: {topic}")
+            self._mqtt.unsubscribe(topic)
 
     def run(self) -> None:
         # register signal handlers for graceful shutdown
@@ -104,6 +94,8 @@ class IomWorker:
         except Exception as ex:
             logging.error(f"Exception in worker: {ex}")
         finally:
+
+            self._iom.terminate()
 
             logging.info("Shutting down MQTT connection...")
             self._mqtt.loop_stop()
