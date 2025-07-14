@@ -4,6 +4,10 @@ import re
 from paho.mqtt import client as mqtt
 from pymongo import MongoClient
 
+from itcs435.vdv435 import AbstractBasicStructure
+from itcs435.vdv435 import AbstractMessageStructure
+from itcs435.vdv435 import Serializable
+from itcs435.vdv435 import TestParentClassStructure, TestSubClassStructure
 from itcs435.siri.publisher import Publisher
 
 class IoM:
@@ -47,7 +51,6 @@ class IoM:
         
         # handle request based on the topic
         
-
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
         pass
