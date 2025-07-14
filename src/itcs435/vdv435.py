@@ -13,37 +13,40 @@ def attributes(**attributes):
     
     return decorator
 
-@attributes(timestamp='Timestamp', version='@version')
-class AbstractBasicStructure():
-    version: str
-    timestamp: str
+class Serializable:
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def xml(self):
-        
-        json: str = self.json()
-        data: dict = json.loads(json)
+    def _create_dict(self):
+        attributes: dict = getattr(self.__class__, "_attributes", {})
+        data: dict = {}
+        for attr, alias_name in attributes.items():
+            value = getattr(self, attr)
+            # Serialisiere weiter, wenn value Instanz von object ist (und nicht None)
+            if isinstance(value, Serializable) and value is not None:
+                # Versuche rekursive Serialisierung, falls möglich
+                if hasattr(value, '_create_dict') and callable(value._create_dict):
+                    data[alias_name] = value._create_dict()
+                else:
+                    # Fallback: __dict__ verwenden
+                    data[alias_name] = value.__dict__
+            else:
+                data[alias_name] = value
 
-        xml: str = unparse({data}, pretty=True)
-        return xml
+        return data
     
     def json(self):
-        attributes: dict = getattr(self.__class__, "_attributes", {})
-        
-        data:dict = {}
-        for attr, alias_name in attributes.items():
-            data[alias_name] = getattr(self, attr)
+        class_name: str = self.__class__.__name__.replace('Structure', '')
+        json_str: str = json.dumps({class_name: self._create_dict()}, indent=4, ensure_ascii=False)
+        return json_str
 
-        class_name: str = self.__class__.__name__
-        class_name = class_name.replace('Structure', '')
-
-        json: str = json.dumps({class_name: data}, indent=4, ensure_ascii=False)
-
-        return json
-
+    def xml(self):
+        data: dict = json.loads(self.json())
+        xml: str = unparse(data, pretty=True)
+        return xml
+    
     @classmethod
     def load(cls, raw: str):
         try:
@@ -56,14 +59,26 @@ class AbstractBasicStructure():
             class_name = f"{class_name}Structure"
         
         cls = globals()[class_name]
-
-        data = data[class_name]
+        data = next(iter(data.values()))
         
         attributes:dict = getattr(cls, "_attributes", {})
         arguments:dict = {attr: data[alias] for attr, alias in attributes.items() if alias in data}
 
         return cls(**arguments)
 
+@attributes(timestamp='Timestamp', version='@version')
+class AbstractBasicStructure(Serializable):
+    version: str
+    timestamp: str    
+
 @attributes(message_id='MessageId')   
 class AbstractMessageStructure(AbstractBasicStructure):
     message_id: str
+
+@attributes(value='@value')
+class TestSubClass(AbstractBasicStructure):
+    value: str
+
+@attributes(sub='SubElement')
+class TestParentClass(AbstractBasicStructure):
+    sub: TestSubClass
