@@ -1,3 +1,4 @@
+import re
 
 from paho.mqtt import client as mqtt
 from pymongo import MongoClient
@@ -31,3 +32,11 @@ class IoM:
 
     def terminate(self) -> None:
         pass
+
+    def _topic_matches(self, topic: str, pattern: str) -> bool:
+        regex = re.escape(pattern)
+        regex = regex.replace(r'\+', '[^/]+')
+        regex = regex.replace(r'\#', '.*')
+        regex = '^' + regex + '$'
+
+        return re.match(regex, topic) is not None
