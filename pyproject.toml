@@ -13,6 +13,7 @@ dependencies = [
     "fastapi",
     "lxml",
     "paho-mqtt",
+    "pydantic",
     "pymongo",
     "pyyaml",
     "requests",

@@ -1,36 +1,51 @@
+import uuid
+
 from datetime import datetime, timezone
+from pydantic import Field
 
-from itcs435.serialization import attributes, Serializable
+from itcs435.serialization import Serializable
 
-@attributes(timestamp='Timestamp', version='@version')
+""" Basic Types """
+class VehicleRef(Serializable):
+    version: str = Field(alias='@version', default='any')
+    value: str = Field(alias='#text')
+
+""" Abstract Structures """
 class AbstractBasicStructure(Serializable):
-    version: str
-    timestamp: str
+    version: str = Field(alias='@version', default='1.0')
+    timestamp: str = Field(alias='Timestamp', default=str(datetime.now(timezone.utc).replace(microsecond=0).isoformat()))
 
-    def __init__(self, **arguments):
-        super().__init__(**arguments)
-
-        self.version = '1.0'
-        self.timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-@attributes(message_id='MessageId')   
 class AbstractMessageStructure(AbstractBasicStructure):
-    message_id: str
+    message_id: str = Field(alias='MessageId', default=str(uuid.uuid4()))
 
-    def __init__(self, **arguments):
-        super().__init__(**arguments)
+class AbstractRequestStructure(AbstractMessageStructure):
+    pass
 
-        self.message_id = None
+class AbstractRequestWithReferenceStructure(AbstractMessageStructure):
+    message_id_ref: str = Field(alias='MessageIdRef')
 
-"""@attributes(value='@value')
-class TestSubClassStructure(AbstractBasicStructure):
-    value: str
+class AbstractResponseStructure(AbstractMessageStructure):
+    common_reponse_code: str = Field(alias='CommonResponseCode', default='ok')
 
-    def __init__(self, **arguments):
-        super().__init__(**arguments)
+class InvalidMessageResponseStructure(AbstractResponseStructure):
+    pass
 
-        self.value = 'DefaultValue'
+class AbstractDataPublicationStructure(AbstractBasicStructure):
+    timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default=str(datetime.now(timezone.utc).replace(microsecond=0).isoformat()))
+    publisher_id: str = Field('PublisherId')
 
-@attributes(sub='SubElement')
-class TestParentClassStructure(AbstractBasicStructure):
-    sub: TestSubClassStructure"""
+""" LogOn / LogOff Structures """
+class AbstractTechnicalLogOnOffRequestStructure(AbstractMessageStructure):
+    pass
+
+class AbstractTechnicalVehicleLogOnOffRequestStructure(AbstractTechnicalLogOnOffRequestStructure):
+    xmlns_netex: str = Field(alias='@xmlns:netex', default='http://www.netex.org.uk/netex')
+
+    vehicle_ref: VehicleRef = Field(alias='netex:VehicleRef')
+    onboard_unit_id: str|None = Field(alias='OnBoardUnitId', default=None)
+
+class TechnicalVehicleLogOnRequestStructure(AbstractTechnicalVehicleLogOnOffRequestStructure):
+    base_version: str|None = Field(alias='BaseVersion', default=None)
+
+class TechnicalVehicleLogOnResponseStructure(AbstractResponseStructure):
+    technical_vehicle_log_on_response_data: str = Field(alias='TechnicalVehicleLogOnResponseData', default='')
