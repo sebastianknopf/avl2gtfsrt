@@ -15,9 +15,16 @@ def attributes(**attributes):
 
 class Serializable:
 
+    _registry: dict = {}
+
     def __init__(self, **arguments):
         for key, value in arguments.items():
             setattr(self, key, value)
+
+    def __init_subclass__(cls, **arguments):
+        super().__init_subclass__(**arguments)
+
+        Serializable._registry[cls.__name__] = cls
 
     def _create_dict(self) -> dict:
         attributes: dict = getattr(self.__class__, "_attributes", {})
@@ -65,8 +72,8 @@ class Serializable:
             data: dict = parse(raw)
         
         class_name: str = next(iter(data))
-        
-        cls = globals()[class_name]
+
+        cls = cls._registry.get(class_name)
         data = next(iter(data.values()))
 
         return cls._load_dict(data)
