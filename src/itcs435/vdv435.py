@@ -1,8 +1,6 @@
-import uuid
-
-from datetime import datetime, timezone
 from pydantic import Field
 
+from itcs435.common.util import isotimestamp, uid
 from itcs435.serialization import Serializable
 
 """ Basic Types """
@@ -13,10 +11,10 @@ class VehicleRef(Serializable):
 """ Abstract Structures """
 class AbstractBasicStructure(Serializable):
     version: str = Field(alias='@version', default='1.0')
-    timestamp: str = Field(alias='Timestamp', default=str(datetime.now(timezone.utc).replace(microsecond=0).isoformat()))
+    timestamp: str = Field(alias='Timestamp', default_factory=isotimestamp)
 
 class AbstractMessageStructure(AbstractBasicStructure):
-    message_id: str = Field(alias='MessageId', default=str(uuid.uuid4()))
+    message_id: str = Field(alias='MessageId', default_factory=uid)
 
 class AbstractRequestStructure(AbstractMessageStructure):
     pass
@@ -31,7 +29,7 @@ class InvalidMessageResponseStructure(AbstractResponseStructure):
     pass
 
 class AbstractDataPublicationStructure(AbstractBasicStructure):
-    timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default=str(datetime.now(timezone.utc).replace(microsecond=0).isoformat()))
+    timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default=isotimestamp)
     publisher_id: str = Field('PublisherId')
 
 """ LogOn / LogOff Structures """
@@ -44,8 +42,16 @@ class AbstractTechnicalVehicleLogOnOffRequestStructure(AbstractTechnicalLogOnOff
     vehicle_ref: VehicleRef = Field(alias='netex:VehicleRef')
     onboard_unit_id: str|None = Field(alias='OnBoardUnitId', default=None)
 
+class TechnicalVehicleLogOnResponseDataStructure(Serializable):
+    pass
+
+class TechnicalVehicleLogOnResponseErrorStructure(Serializable):
+    technical_vehicle_log_on_response_code: str = Field(alias='TechnicalVehicleLogOnResponseCode')
+
 class TechnicalVehicleLogOnRequestStructure(AbstractTechnicalVehicleLogOnOffRequestStructure):
     base_version: str|None = Field(alias='BaseVersion', default=None)
 
 class TechnicalVehicleLogOnResponseStructure(AbstractResponseStructure):
-    technical_vehicle_log_on_response_data: str = Field(alias='TechnicalVehicleLogOnResponseData', default='')
+    technical_vehicle_log_on_response_data: TechnicalVehicleLogOnResponseDataStructure|None = Field(alias='TechnicalVehicleLogOnResponseData', default=None)
+    technical_vehicle_log_on_response_error: TechnicalVehicleLogOnResponseErrorStructure|None = Field(alias='TechnicalVehicleLogOnResponseError', default=None)
+

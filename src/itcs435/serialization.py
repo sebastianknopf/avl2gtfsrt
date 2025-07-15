@@ -15,7 +15,7 @@ class Serializable(BaseModel):
     def json(self):
         class_name: str = self.__class__.__name__
         json_str: str = json.dumps({
-            class_name: self.model_dump(by_alias=True)
+            class_name: self.model_dump(by_alias=True, exclude_none=True)
         }, indent=4, ensure_ascii=False)
 
         return json_str
