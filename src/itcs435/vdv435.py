@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from itcs435.common.util import isotimestamp, uid
+from itcs435.common.shared import isotimestamp, uid
 from itcs435.serialization import Serializable
 
 """ Basic Types """
