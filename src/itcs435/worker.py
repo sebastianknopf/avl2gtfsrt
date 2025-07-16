@@ -29,14 +29,6 @@ class IomWorker:
         
         self._mdb: MongoClient = None
 
-        self._iom: IoM = IoM(
-            organisation_id=self._organisation_id,
-            itcs_id=self._itcs_id,
-            mqtt_client=self._mqtt,
-            mongo_client=self._mdb,
-            siri_publisher=self._publisher
-        )
-
         self._should_run = threading.Event()
         self._should_run.set()
 
@@ -74,7 +66,16 @@ class IomWorker:
         mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
 
         logging.info("Connecting to MongoDB ...")
-        self._mdb = MongoClient(f"mongodb://{mongodb_username}:{mongodb_password}@mongodb:27017")
+        self._mdb = MongoClient(f"mongodb://{mongodb_username}:{mongodb_password}@mongodb:27017/?authSource=admin")
+
+        # create IoM instance
+        self._iom: IoM = IoM(
+            organisation_id=self._organisation_id,
+            itcs_id=self._itcs_id,
+            mqtt_client=self._mqtt,
+            mongo_client=self._mdb,
+            siri_publisher=self._publisher
+        )
 
         # set username and password if provided
         mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
