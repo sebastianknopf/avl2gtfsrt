@@ -3,6 +3,7 @@ from pydantic import Field
 from itcs435.common.shared import isotimestamp, uid
 from itcs435.serialization import Serializable
 
+
 """ Basic Types """
 class VehicleRef(Serializable):
     version: str = Field(alias='@version', default='any')
@@ -32,7 +33,7 @@ class AbstractDataPublicationStructure(AbstractBasicStructure):
     timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default=isotimestamp)
     publisher_id: str = Field('PublisherId')
 
-""" LogOn / LogOff Structures """
+""" Technical LogOn / LogOff Structures """
 class AbstractTechnicalLogOnOffRequestStructure(AbstractMessageStructure):
     pass
 
@@ -54,4 +55,17 @@ class TechnicalVehicleLogOnRequestStructure(AbstractTechnicalVehicleLogOnOffRequ
 class TechnicalVehicleLogOnResponseStructure(AbstractResponseStructure):
     technical_vehicle_log_on_response_data: TechnicalVehicleLogOnResponseDataStructure|None = Field(alias='TechnicalVehicleLogOnResponseData', default=None)
     technical_vehicle_log_on_response_error: TechnicalVehicleLogOnResponseErrorStructure|None = Field(alias='TechnicalVehicleLogOnResponseError', default=None)
+
+class TechnicalVehicleLogOffRequestStructure(AbstractTechnicalVehicleLogOnOffRequestStructure):
+    pass
+
+class TechnicalVehicleLogOffResponseDataStructure(Serializable):
+    pass
+
+class TechnicalVehicleLogOffResponseErrorStructure(Serializable):
+    technical_vehicle_log_off_response_code: str = Field(alias='TechnicalVehicleLogOffResponseCode')
+
+class TechnicalVehicleLogOffResponseStructure(AbstractResponseStructure):
+    technical_vehicle_log_off_response_data: TechnicalVehicleLogOffResponseDataStructure|None = Field(alias='TechnicalVehicleLogOffResponseData', default=None)
+    technical_vehicle_log_off_response_error: TechnicalVehicleLogOffResponseErrorStructure|None = Field(alias='TechnicalVehicleLogOffResponseError', default=None)
 
