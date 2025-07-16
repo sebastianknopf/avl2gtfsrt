@@ -8,6 +8,8 @@ from itcs435.serialization import Serializable
 from itcs435.vdv435 import AbstractBasicStructure, AbstractMessageStructure
 from itcs435.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
 from itcs435.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
+from itcs435.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
+from itcs435.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
 from itcs435.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
@@ -68,18 +70,65 @@ class IoM:
         
         # handle request
         if isinstance(msg, TechnicalVehicleLogOnRequestStructure):
-            vehicle_id: str = msg.vehicle_ref.value
+            vehicle_ref: str = msg.vehicle_ref.value
 
-            response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
-            response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
-            
+            vehicle_collection = self._mongo_client['itcs435']['vehicles']
+
+            vehicle = vehicle_collection.find_one({'vehicle_ref': vehicle_ref})
+            if vehicle is not None and vehicle.get('is_technically_logged_on', False):
+                response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
+                response.common_reponse_code = 'messageUnderstood'
+                response.technical_vehicle_log_on_response_error = TechnicalVehicleLogOnResponseErrorStructure(
+                    TechnicalVehicleLogOnResponseCode='doubleLogOn'
+                )
+            else:
+                vehicle_collection.update_one(
+                    {'vehicle_ref': vehicle_ref},
+                    {'$set': {'is_technically_logged_on': True}},
+                    upsert=True
+                )
+
+                response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
+                response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
+
             self._publish_message(
                 'pub_vehicle_inbox', 
                 response.xml(),
                 data_version=data_version,
-                vehicle_id=vehicle_id,
+                vehicle_id=vehicle_ref,
                 correlation_id=correlation_id
             )
+
+        elif isinstance(msg, TechnicalVehicleLogOffRequestStructure):
+            vehicle_ref: str = msg.vehicle_ref.value
+
+            vehicle_collection = self._mongo_client['itcs435']['vehicles']
+
+            vehicle = vehicle_collection.find_one({'vehicle_ref': vehicle_ref})
+            if vehicle is not None and not vehicle.get('is_technically_logged_on', False):
+                response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
+                response.common_reponse_code = 'messageUnderstood'
+                response.technical_vehicle_log_off_response_error = TechnicalVehicleLogOffResponseErrorStructure(
+                    TechnicalVehicleLogOffResponseCode='vehicleNotLoggedOn'
+                )
+            else:
+                vehicle_collection.update_one(
+                    {'vehicle_ref': vehicle_ref},
+                    {'$set': {'is_technically_logged_on': False}},
+                    upsert=True
+                )
+
+                response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
+                response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()
+
+            self._publish_message(
+                'pub_vehicle_inbox', 
+                response.xml(),
+                data_version=data_version,
+                vehicle_id=vehicle_ref,
+                correlation_id=correlation_id
+            )
+
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
         pass
