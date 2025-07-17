@@ -30,8 +30,8 @@ class InvalidMessageResponseStructure(AbstractResponseStructure):
     pass
 
 class AbstractDataPublicationStructure(AbstractBasicStructure):
-    timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default=isotimestamp)
-    publisher_id: str = Field('PublisherId')
+    timestamp_of_measurement: str = Field(alias='TimestampOfMeasurement', default_factory=isotimestamp)
+    publisher_id: str = Field(alias='PublisherId')
 
 """ Technical LogOn / LogOff Structures """
 class AbstractTechnicalLogOnOffRequestStructure(AbstractMessageStructure):
@@ -68,4 +68,23 @@ class TechnicalVehicleLogOffResponseErrorStructure(Serializable):
 class TechnicalVehicleLogOffResponseStructure(AbstractResponseStructure):
     technical_vehicle_log_off_response_data: TechnicalVehicleLogOffResponseDataStructure|None = Field(alias='TechnicalVehicleLogOffResponseData', default=None)
     technical_vehicle_log_off_response_error: TechnicalVehicleLogOffResponseErrorStructure|None = Field(alias='TechnicalVehicleLogOffResponseError', default=None)
+
+""" Positioning Structures """
+class WGS84PhysicalPosition(Serializable):
+    id: str|None = Field(alias='@id', default=None)
+    srs_name: str|None = Field(alias='@srsName', default=None)
+
+    latitude: float|None = Field(alias='Latitude', default=None)
+    longitude: float|None = Field(alias='Longitude', default=None)
+    altitude: float|None = Field(alias='Altitude', default=None)
+    precision: float|None = Field(alias='Precision', default=None)
+
+class GnssPhysicalPosition(Serializable):
+    wgs_84_physical_position: WGS84PhysicalPosition = Field(alias='WGS84PhysicalPosition')
+    number_of_visible_satellites: int|None = Field(alias='NumberOfVisibleSatellites', default=None)
+    compass_bearing: float|None = Field(alias='CompassBearing', default=None)
+    velocity: float|None = Field(alias='Velocity', default=None)
+
+class GnssPhysicalPositionDataStructure(AbstractDataPublicationStructure):
+    gnss_physical_position: GnssPhysicalPosition = Field(alias='GnssPhysicalPosition')
 
