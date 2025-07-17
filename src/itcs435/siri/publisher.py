@@ -54,8 +54,7 @@ class Publisher:
 
         time.sleep(0.1) # give the endpoint thread time for startup
         self._logger.info(f"Publisher running at {self._participant_config.participants[self._service_participant_ref]['host']}:{self._participant_config.participants[self._service_participant_ref]['port']}")
-        self._logger.info(f"MongoDB connected at {self._mdb.address[0]}:{self._mdb.address[1]}")
-
+        
         # set internal callbacks
         self._endpoint.set_callbacks(
             on_subscribe_callback=self._on_subscribe_internal,
