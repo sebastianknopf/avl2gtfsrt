@@ -2,7 +2,6 @@ import logging
 import re
 
 from paho.mqtt import client as mqtt
-from pymongo import MongoClient
 
 from itcs435.serialization import Serializable
 from itcs435.vdv435 import AbstractBasicStructure, AbstractMessageStructure
@@ -10,6 +9,7 @@ from itcs435.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehic
 from itcs435.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
 from itcs435.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
 from itcs435.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
+from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
@@ -18,11 +18,11 @@ class TopicLevelStructureDict(dict):
 
 class IoM:
 
-    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, mongo_client: MongoClient, siri_publisher: Publisher) -> None:
+    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: Storage, siri_publisher: Publisher) -> None:
         self._organisation_id = organisation_id
         self._itcs_id = itcs_id
         self._mqtt_client = mqtt_client
-        self._mongo_client = mongo_client
+        self._storage = storage
         self._siri_publisher = siri_publisher
 
         # create TLS topic structures
@@ -72,9 +72,7 @@ class IoM:
         if isinstance(msg, TechnicalVehicleLogOnRequestStructure):
             vehicle_ref: str = msg.vehicle_ref.value
 
-            vehicle_collection = self._mongo_client['itcs435']['vehicles']
-
-            vehicle = vehicle_collection.find_one({'vehicle_ref': vehicle_ref})
+            vehicle = self._storage.get_vehicle(vehicle_ref)
             if vehicle is not None and vehicle.get('is_technically_logged_on', False):
                 response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
                 response.common_reponse_code = 'messageUnderstood'
@@ -82,11 +80,9 @@ class IoM:
                     TechnicalVehicleLogOnResponseCode='doubleLogOn'
                 )
             else:
-                vehicle_collection.update_one(
-                    {'vehicle_ref': vehicle_ref},
-                    {'$set': {'is_technically_logged_on': True}},
-                    upsert=True
-                )
+                self._storage.update_vehicle(vehicle_ref, {
+                    'is_technically_logged_on': True
+                })
 
                 response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
                 response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
@@ -102,9 +98,7 @@ class IoM:
         elif isinstance(msg, TechnicalVehicleLogOffRequestStructure):
             vehicle_ref: str = msg.vehicle_ref.value
 
-            vehicle_collection = self._mongo_client['itcs435']['vehicles']
-
-            vehicle = vehicle_collection.find_one({'vehicle_ref': vehicle_ref})
+            vehicle = self._storage.get_vehicle(vehicle_ref)
             if vehicle is not None and not vehicle.get('is_technically_logged_on', False):
                 response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
                 response.common_reponse_code = 'messageUnderstood'
@@ -112,10 +106,9 @@ class IoM:
                     TechnicalVehicleLogOffResponseCode='vehicleNotLoggedOn'
                 )
             else:
-                vehicle_collection.update_one(
-                    {'vehicle_ref': vehicle_ref},
-                    {'$set': {'is_technically_logged_on': False}},
-                    upsert=True
+                self._storage.update_vehicle(
+                    vehicle_ref,
+                    {'is_technically_logged_on': False}
                 )
 
                 response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()

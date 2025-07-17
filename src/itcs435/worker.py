@@ -8,6 +8,7 @@ from pymongo import MongoClient
 
 from itcs435.common.env import is_debug
 from itcs435.iom import IoM
+from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
 class IomWorker:
@@ -27,7 +28,20 @@ class IomWorker:
             datalog_directory=os.getenv('ITCS435_PUBLISHER_DATALOG_DIRECTORY', 'datalog')
         )
         
-        self._mdb: MongoClient = None
+        # connect to local MongoDB
+        mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
+        mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
+
+        self._storage: Storage = Storage(mongodb_username, mongodb_password)
+
+        # create IoM instance
+        self._iom: IoM = IoM(
+            organisation_id=self._organisation_id,
+            itcs_id=self._itcs_id,
+            mqtt_client=self._mqtt,
+            storage=self._storage,
+            siri_publisher=self._publisher
+        )
 
         self._should_run = threading.Event()
         self._should_run.set()
@@ -60,22 +74,6 @@ class IomWorker:
         # register signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
-
-        # connect to local MongoDB
-        mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
-        mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
-
-        logging.info("Connecting to MongoDB ...")
-        self._mdb = MongoClient(f"mongodb://{mongodb_username}:{mongodb_password}@mongodb:27017/?authSource=admin")
-
-        # create IoM instance
-        self._iom: IoM = IoM(
-            organisation_id=self._organisation_id,
-            itcs_id=self._itcs_id,
-            mqtt_client=self._mqtt,
-            mongo_client=self._mdb,
-            siri_publisher=self._publisher
-        )
 
         # set username and password if provided
         mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
@@ -115,6 +113,6 @@ class IomWorker:
             self._publisher.stop()
 
             logging.info("Closing MongoDB connection ...")
-            self._mdb.close()
+            self._storage.close()
 
             logging.info("Worker shutdown complete.")
