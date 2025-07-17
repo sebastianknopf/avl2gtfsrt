@@ -3,12 +3,13 @@ import re
 
 from paho.mqtt import client as mqtt
 
+from itcs435.common.mqtt import get_tls_value
 from itcs435.common.serialization import Serializable
 from itcs435.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
+from itcs435.iom.logonoffhandler import TechnicalVehicleLogOnHandler
+from itcs435.iom.logonoffhandler import TechnicalVehicleLogOffHandler
 from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
@@ -57,8 +58,8 @@ class IomProcessor:
 
     def _handle_request(self, topic: str, payload: bytes) -> None:
         # lookup for correlation ID in the topic
-        data_version: str = self._get_tls_value(topic, 'DataVersion')
-        correlation_id: str = self._get_tls_value(topic, 'CorrelationId')
+        data_version: str = get_tls_value(topic, 'DataVersion')
+        correlation_id: str = get_tls_value(topic, 'CorrelationId')
         
         # handle request based on the topic
         msg: AbstractBasicStructure = Serializable.load(payload)
@@ -70,24 +71,12 @@ class IomProcessor:
         
         # handle request
         if isinstance(msg, TechnicalVehicleLogOnRequestStructure):
+            handler: TechnicalVehicleLogOnHandler = TechnicalVehicleLogOnHandler(self._storage)
+            response: AbstractBasicStructure = handler.handle_request(msg)
+
             vehicle_ref: str = msg.vehicle_ref.value
 
-            vehicle = self._storage.get_vehicle(vehicle_ref)
-            if vehicle is not None and vehicle.get('is_technically_logged_on', False):
-                response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
-                response.common_reponse_code = 'messageUnderstood'
-                response.technical_vehicle_log_on_response_error = TechnicalVehicleLogOnResponseErrorStructure(
-                    TechnicalVehicleLogOnResponseCode='doubleLogOn'
-                )
-            else:
-                self._storage.update_vehicle(vehicle_ref, {
-                    'is_technically_logged_on': True
-                })
-
-                response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
-                response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
-
-            self._publish_message(
+            self._publish(
                 'pub_vehicle_inbox', 
                 response.xml(),
                 data_version=data_version,
@@ -96,25 +85,12 @@ class IomProcessor:
             )
 
         elif isinstance(msg, TechnicalVehicleLogOffRequestStructure):
+            handler: TechnicalVehicleLogOffHandler = TechnicalVehicleLogOffHandler(self._storage)
+            response: AbstractBasicStructure = handler.handle_request(msg)
+
             vehicle_ref: str = msg.vehicle_ref.value
 
-            vehicle = self._storage.get_vehicle(vehicle_ref)
-            if vehicle is not None and not vehicle.get('is_technically_logged_on', False):
-                response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
-                response.common_reponse_code = 'messageUnderstood'
-                response.technical_vehicle_log_off_response_error = TechnicalVehicleLogOffResponseErrorStructure(
-                    TechnicalVehicleLogOffResponseCode='vehicleNotLoggedOn'
-                )
-            else:
-                self._storage.update_vehicle(
-                    vehicle_ref,
-                    {'is_technically_logged_on': False}
-                )
-
-                response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
-                response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()
-
-            self._publish_message(
+            self._publish(
                 'pub_vehicle_inbox', 
                 response.xml(),
                 data_version=data_version,
@@ -122,20 +98,9 @@ class IomProcessor:
                 correlation_id=correlation_id
             )
 
-
     def _handle_message(self, topic: str, payload: bytes) -> None:
         pass
-    
-    def _tls_matches(self, topic: str, tls_name: str) -> bool:
-        tls_str: str = self._get_tls(tls_name)[0]
-        
-        regex = re.escape(tls_str)
-        regex = regex.replace(r'\+', '[^/]+')
-        regex = regex.replace(r'\#', '.*')
-        regex = '^' + regex + '$'
 
-        return re.match(regex, topic) is not None
-    
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
             tls_name = f"_tls_{tls_name}"
@@ -149,19 +114,17 @@ class IomProcessor:
         else:
             raise ValueError(f"Undefined TLS {tls_name} not found!")
     
-    def _get_tls_value(self, topic: str, key: str, fail_on_error: bool = True) -> str|None:
-        topic_components: list[str] = topic.split('/')
-        if key in topic_components:
-            result: str = topic_components[topic_components.index(key) + 1]
+    def _tls_matches(self, topic: str, tls_name: str) -> bool:
+        tls_str: str = self._get_tls(tls_name)[0]
+        
+        regex = re.escape(tls_str)
+        regex = regex.replace(r'\+', '[^/]+')
+        regex = regex.replace(r'\#', '.*')
+        regex = '^' + regex + '$'
 
-            return result
-        else:
-            if fail_on_error:
-                raise LookupError(f"Key {key} not found in topic {topic}")
+        return re.match(regex, topic) is not None
         
-        return None
-        
-    def _publish_message(self, tls_name: str, payload: str, retain=False, **arguments):
+    def _publish(self, tls_name: str, payload: str, retain=False, **arguments):
         tls: tuple[str, int] = self._get_tls(tls_name)
 
         tls_str: str = tls[0]
