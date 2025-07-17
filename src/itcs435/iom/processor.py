@@ -3,20 +3,20 @@ import re
 
 from paho.mqtt import client as mqtt
 
-from itcs435.serialization import Serializable
-from itcs435.vdv435 import AbstractBasicStructure, AbstractMessageStructure
-from itcs435.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
-from itcs435.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
-from itcs435.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
-from itcs435.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
+from itcs435.common.serialization import Serializable
+from itcs435.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
+from itcs435.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
 from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
     def __missing__(self, key):
         return f"{{{key}}}"
-
-class IoM:
+    
+class IomProcessor:
 
     def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: Storage, siri_publisher: Publisher) -> None:
         self._organisation_id = organisation_id

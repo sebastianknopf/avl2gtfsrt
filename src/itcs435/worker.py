@@ -4,10 +4,9 @@ import signal
 import threading
 
 from paho.mqtt import client as mqtt
-from pymongo import MongoClient
 
 from itcs435.common.env import is_debug
-from itcs435.iom import IoM
+from itcs435.iom.processor import IomProcessor
 from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
@@ -35,7 +34,7 @@ class IomWorker:
         self._storage: Storage = Storage(mongodb_username, mongodb_password)
 
         # create IoM instance
-        self._iom: IoM = IoM(
+        self._iom: IomProcessor = IomProcessor(
             organisation_id=self._organisation_id,
             itcs_id=self._itcs_id,
             mqtt_client=self._mqtt,
@@ -102,8 +101,6 @@ class IomWorker:
         except Exception as ex:
             logging.error(f"Exception in worker: {ex}")
         finally:
-
-            self._iom.terminate()
 
             logging.info("Shutting down MQTT connection...")
             self._mqtt.loop_stop()
