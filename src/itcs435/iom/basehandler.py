@@ -8,7 +8,7 @@ class AbstractHandler(ABC):
     def __init__(self, storage: Storage) -> None:
         self._storage = storage
 
-    def handle(self, msg: AbstractBasicStructure) -> None:
+    def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
         raise NotImplementedError("Subclasses must implement this method")
     
 

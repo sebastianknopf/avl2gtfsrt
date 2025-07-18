@@ -5,11 +5,13 @@ from paho.mqtt import client as mqtt
 
 from itcs435.common.mqtt import get_tls_value
 from itcs435.common.serialization import Serializable
-from itcs435.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure
+from itcs435.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure, AbstractDataPublicationStructure
 from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
 from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
+from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
 from itcs435.iom.logonoffhandler import TechnicalVehicleLogOnHandler
 from itcs435.iom.logonoffhandler import TechnicalVehicleLogOffHandler
+from itcs435.iom.positioninghandler import GnssPhysicalPositionHandler
 from itcs435.storage import Storage
 from itcs435.siri.publisher import Publisher
 
@@ -99,7 +101,19 @@ class IomProcessor:
             )
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
-        pass
+        
+        # handle message based on the topic
+        msg: AbstractBasicStructure = Serializable.load(payload)
+
+        # check if the message is subclass of AbstractDataPublicationStructure
+        # other classes are not meant to be used in pub / sub pattern
+        if not issubclass(msg.__class__, AbstractDataPublicationStructure):
+            raise TypeError(f"{msg.__class__.__name__} is not subclass of AbstractDataPublicationStructure and not usable in Pub/Sub")
+        
+        # handle message
+        if isinstance(msg, GnssPhysicalPositionDataStructure):
+            handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
+            handler.handle(topic, msg)
 
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
