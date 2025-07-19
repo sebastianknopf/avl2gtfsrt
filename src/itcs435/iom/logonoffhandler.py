@@ -13,9 +13,9 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
         
         vehicle_ref: str = msg.vehicle_ref.value
 
-        vehicle = self._storage.get_vehicle(vehicle_ref)
+        vehicle = self._object_storage.get_vehicle(vehicle_ref)
         if vehicle is None or vehicle is not None and not vehicle.get('is_technically_logged_on', False):
-            self._storage.update_vehicle(vehicle_ref, {
+            self._object_storage.update_vehicle(vehicle_ref, {
                 'is_technically_logged_on': True
             })
 
@@ -38,9 +38,9 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
         
         vehicle_ref: str = msg.vehicle_ref.value
 
-        vehicle = self._storage.get_vehicle(vehicle_ref)
+        vehicle = self._object_storage.get_vehicle(vehicle_ref)
         if vehicle is not None and vehicle.get('is_technically_logged_on', False):
-            self._storage.update_vehicle(
+            self._object_storage.update_vehicle(
                 vehicle_ref,
                 {'is_technically_logged_on': False}
             )

@@ -7,7 +7,7 @@ from paho.mqtt import client as mqtt
 
 from itcs435.common.env import is_debug
 from itcs435.iom.processor import IomProcessor
-from itcs435.storage import Storage
+from itcs435.objectstorage import ObjectStorage
 from itcs435.siri.publisher import Publisher
 
 class IomWorker:
@@ -31,14 +31,14 @@ class IomWorker:
         mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
         mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
 
-        self._storage: Storage = Storage(mongodb_username, mongodb_password)
+        self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
 
         # create IoM instance
         self._iom: IomProcessor = IomProcessor(
             organisation_id=self._organisation_id,
             itcs_id=self._itcs_id,
             mqtt_client=self._mqtt,
-            storage=self._storage,
+            storage=self._object_storage,
             siri_publisher=self._publisher
         )
 
@@ -110,6 +110,6 @@ class IomWorker:
             self._publisher.stop()
 
             logging.info("Closing MongoDB connection ...")
-            self._storage.close()
+            self._object_storage.close()
 
             logging.info("Worker shutdown complete.")

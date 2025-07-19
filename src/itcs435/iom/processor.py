@@ -12,7 +12,7 @@ from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
 from itcs435.iom.logonoffhandler import TechnicalVehicleLogOnHandler
 from itcs435.iom.logonoffhandler import TechnicalVehicleLogOffHandler
 from itcs435.iom.positioninghandler import GnssPhysicalPositionHandler
-from itcs435.storage import Storage
+from itcs435.objectstorage import ObjectStorage
 from itcs435.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
@@ -21,7 +21,7 @@ class TopicLevelStructureDict(dict):
     
 class IomProcessor:
 
-    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: Storage, siri_publisher: Publisher) -> None:
+    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: ObjectStorage, siri_publisher: Publisher) -> None:
         self._organisation_id = organisation_id
         self._itcs_id = itcs_id
         self._mqtt_client = mqtt_client

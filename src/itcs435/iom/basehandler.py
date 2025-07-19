@@ -1,12 +1,12 @@
 from abc import ABC
 
-from itcs435.storage import Storage
+from itcs435.objectstorage import ObjectStorage
 from itcs435.vdv.vdv435 import AbstractBasicStructure
 
 class AbstractHandler(ABC):
 
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
+    def __init__(self, storage: ObjectStorage) -> None:
+        self._object_storage = storage
 
     def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
         raise NotImplementedError("Subclasses must implement this method")

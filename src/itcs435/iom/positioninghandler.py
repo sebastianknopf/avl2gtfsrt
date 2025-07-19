@@ -17,7 +17,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # process the physical position data
         vehicle_ref = get_tls_value(topic, 'Vehicle')
 
-        vehicle_position: dict = self._storage.get_vehicle_position(vehicle_ref)
+        vehicle_position: dict = self._object_storage.get_vehicle_position(vehicle_ref)
         if vehicle_position is None:
             vehicle_position = {
                 'vehicle_ref': vehicle_ref,
@@ -34,4 +34,4 @@ class GnssPhysicalPositionHandler(AbstractHandler):
             'longitude': longitude
         })
 
-        self._storage.update_vehicle_position(vehicle_ref, vehicle_position)
+        self._object_storage.update_vehicle_position(vehicle_ref, vehicle_position)

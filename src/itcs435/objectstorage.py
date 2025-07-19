@@ -4,7 +4,7 @@ from pymongo import MongoClient
 
 from itcs435.common.shared import unixtimestamp
 
-class Storage:
+class ObjectStorage:
     def __init__(self, username: str, password: str, db_name: str = 'itcs435'):
         
         logging.info("Connecting to MongoDB ...")
