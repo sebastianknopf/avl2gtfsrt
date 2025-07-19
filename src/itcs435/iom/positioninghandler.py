@@ -1,5 +1,6 @@
 import logging
 
+from datetime import datetime, timezone
 from typing import cast
 
 from itcs435.common.mqtt import get_tls_value
@@ -15,4 +16,22 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
         # process the physical position data
         vehicle_ref = get_tls_value(topic, 'Vehicle')
-        logging.info(f"Processing GNSS physical position data for vehicle {vehicle_ref}")
+
+        vehicle_position: dict = self._storage.get_vehicle_position(vehicle_ref)
+        if vehicle_position is None:
+            vehicle_position = {
+                'vehicle_ref': vehicle_ref,
+                'gnss_positions': []
+            }
+
+        timestamp: int = int(datetime.fromisoformat(msg.timestamp_of_measurement).timestamp())
+        latitude: float = msg.gnss_physical_position.wgs_84_physical_position.latitude
+        longitude: float = msg.gnss_physical_position.wgs_84_physical_position.longitude
+
+        vehicle_position['gnss_positions'].append({
+            'timestamp': timestamp,
+            'latitude': latitude,
+            'longitude': longitude
+        })
+
+        self._storage.update_vehicle_position(vehicle_ref, vehicle_position)
