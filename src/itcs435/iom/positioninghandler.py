@@ -11,12 +11,16 @@ from itcs435.iom.basehandler import AbstractHandler
 class GnssPhysicalPositionHandler(AbstractHandler):
 
     def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
-        # Cast the message to the specific type if needed
         msg = cast(GnssPhysicalPositionDataStructure, msg)
 
-        # process the physical position data
-        vehicle_ref = get_tls_value(topic, 'Vehicle')
+        vehicle_ref: str = get_tls_value(topic, 'Vehicle')
 
+        # verify that the vehicle is technically logged on
+        vehicle: dict = self._object_storage.get_vehicle(vehicle_ref)
+        if vehicle is None or not vehicle.get('is_technically_logged_on', False):
+            raise RuntimeError(f"Vehicle {vehicle_ref} is not technically logged on")
+
+        # update vehicle position data
         vehicle_position: dict = self._object_storage.get_vehicle_position(vehicle_ref)
         if vehicle_position is None:
             vehicle_position = {
