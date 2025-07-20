@@ -24,10 +24,14 @@ class ObjectStorage:
         )
 
     def get_vehicle_position(self, vehicle_ref: str) -> dict|None:
-        vehicle_position = self._db.vehicle_positions.find_one({'vehicle_ref': vehicle_ref})
-        return vehicle_position
+        vehicle_position = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+        return vehicle_position['gnss_positions'][-1] if len(vehicle_position['gnss_positions']) > 0 else None
+
+    def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
+        vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+        return vehicle_activity
     
-    def update_vehicle_position(self, vehicle_ref: str, data: dict) -> None:
+    def update_vehicle_activity(self, vehicle_ref: str, data: dict) -> None:
         
         # reduce last positions to the latest 10 elements
         # remove also positions if they are older than 5 minutes
@@ -43,7 +47,7 @@ class ObjectStorage:
 
             data['gnss_positions'] = updated_gnss_positions
         
-        self._db.vehicle_positions.update_one(
+        self._db.vehicle_activities.update_one(
             {'vehicle_ref': vehicle_ref},
             {'$set': data},
             upsert=True
