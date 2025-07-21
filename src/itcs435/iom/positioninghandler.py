@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone
 from typing import cast
 
+from itcs435.common.env import is_set
 from itcs435.common.mqtt import get_tls_value
 from itcs435.vdv.vdv435 import AbstractBasicStructure
 from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
@@ -40,3 +41,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         })
 
         self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+
+        # check whether AVL processing is enabled and process position data
+        if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
+            pass
