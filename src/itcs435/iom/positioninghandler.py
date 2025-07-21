@@ -68,7 +68,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     
                     try:
                         logging.info(f"Running nominal adapter {adapter_type} ...")
-                        adapter.load_nominal_trips_by_position(latitude, longitude)
+                        adapter.cache_trip_candidates_by_position(latitude, longitude)
                     except Exception as ex:
                         if is_set('ITCS435_DEBUG'):
                             logging.exception(ex)
