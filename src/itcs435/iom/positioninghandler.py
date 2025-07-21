@@ -46,4 +46,4 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # check whether AVL processing is enabled and process position data
         if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
             matcher: AvlMatcher = AvlMatcher(self._object_storage.get_vehicles())
-            matcher.process(vehicle_ref, vehicle_activity['gnss_positions'])
+            matcher.process(vehicle, vehicle_activity['gnss_positions'])

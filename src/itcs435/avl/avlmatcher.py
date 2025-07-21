@@ -6,5 +6,5 @@ class AvlMatcher:
     def __init__(self, vehicles: dict) -> None:
         self._vehicles = vehicles
 
-    def process(self, vehicle_ref: str, gnss_positions: list[dict[str, any]]) -> None:
+    def process(self, vehicle: dict, gnss_positions: list[dict[str, any]]) -> None:
         activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
