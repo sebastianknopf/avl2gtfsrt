@@ -1,11 +1,14 @@
 import logging
+import os
 
 from datetime import datetime, timezone
 from typing import cast
 
 from itcs435.avl.avlmatcher import AvlMatcher
+from itcs435.avl.spatialvector import SpatialVectorCollection
 from itcs435.common.env import is_set
 from itcs435.common.mqtt import get_tls_value
+from itcs435.nominal.baseadapter import BaseNominalAdapter
 from itcs435.vdv.vdv435 import AbstractBasicStructure
 from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
 from itcs435.iom.basehandler import AbstractHandler
@@ -43,7 +46,36 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
         self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
 
-        # check whether AVL processing is enabled and process position data
-        if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
-            matcher: AvlMatcher = AvlMatcher(self._object_storage.get_vehicles())
-            matcher.process(vehicle, vehicle_activity['gnss_positions'])
+        if len(vehicle_activity['gnss_positions']) > 1:
+            activity: SpatialVectorCollection = SpatialVectorCollection(vehicle_activity['gnss_positions'])
+
+            # check whether nominal caching is enabled
+            # alternative: check whether AVL processing is enabled as AVL processing requires 
+            # nominal trips cached
+            if is_set('ITCS435_NOMINAL_CACHING_ENABLED') or is_set('ITCS435_AVL_PROCESSING_ENABLED'):
+                
+                # only proceed if the vehicle is standing at a station actually
+                # assumption: the vehicle waits for the departure time
+                if activity.is_movement():
+                    adapter: BaseNominalAdapter = None
+                    
+                    adapter_type: str = os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE', 'otp')
+                    if adapter_type == 'otp':
+                        from itcs435.nominal.otp.adapter import OtpAdapter
+                        adapter = OtpAdapter()
+                    else:
+                        raise ValueError(f"Unknown nominal adapter type {adapter_type}!")
+                    
+                    try:
+                        logging.info(f"Running nominal adapter {adapter_type} ...")
+                        adapter.load_nominal_trips_by_position(latitude, longitude)
+                    except Exception as ex:
+                        if is_set('ITCS435_DEBUG'):
+                            logging.exception(ex)
+                        else:
+                            logging.error(str(ex))
+
+            # check whether AVL processing is enabled and process position data
+            if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
+                matcher: AvlMatcher = AvlMatcher(self._object_storage.get_vehicles())
+                matcher.process(vehicle, vehicle_activity['gnss_positions'])
