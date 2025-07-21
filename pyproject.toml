@@ -10,6 +10,7 @@ readme = "README.md"
 license = {text = "Apache License (2.0)"}
 dependencies = [
     "click",
+    "polyline",
     "fastapi",
     "lxml",
     "paho-mqtt",
