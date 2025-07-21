@@ -12,6 +12,9 @@ class ObjectStorage:
 
         self._db = self._mdb[db_name]
 
+    def get_vehicles(self) -> dict:
+        return list(self._db.vehicles.find({}))
+    
     def get_vehicle(self, vehicle_ref: str) -> dict|None:
         vehicle = self._db.vehicles.find_one({"vehicle_ref": vehicle_ref})
         return vehicle
@@ -29,6 +32,21 @@ class ObjectStorage:
 
     def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+
+        # reduce last positions to the latest 10 elements
+        # remove also positions if they are older than 5 minutes
+        if 'gnss_positions' in vehicle_activity:
+
+            vehicle_activity['gnss_positions'] = vehicle_activity['gnss_positions'][-10:]
+
+            updated_gnss_positions: list[dict] = []
+            current_timestamp: int = unixtimestamp()
+            for gnss_position in vehicle_activity['gnss_positions']:
+                if gnss_position['timestamp'] > current_timestamp - 300:
+                    updated_gnss_positions.append(gnss_position)
+
+            vehicle_activity['gnss_positions'] = updated_gnss_positions
+
         return vehicle_activity
     
     def update_vehicle_activity(self, vehicle_ref: str, data: dict) -> None:
