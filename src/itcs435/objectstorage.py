@@ -32,44 +32,36 @@ class ObjectStorage:
 
     def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-
-        # reduce last positions to the latest 10 elements
-        # remove also positions if they are older than 5 minutes
-        if 'gnss_positions' in vehicle_activity:
-
-            vehicle_activity['gnss_positions'] = vehicle_activity['gnss_positions'][-10:]
-
-            updated_gnss_positions: list[dict] = []
-            current_timestamp: int = unixtimestamp()
-            for gnss_position in vehicle_activity['gnss_positions']:
-                if gnss_position['timestamp'] > current_timestamp - 300:
-                    updated_gnss_positions.append(gnss_position)
-
-            vehicle_activity['gnss_positions'] = updated_gnss_positions
+        vehicle_activity = self._cleanup_vehicle_activity_gnss(vehicle_activity)
 
         return vehicle_activity
     
     def update_vehicle_activity(self, vehicle_ref: str, data: dict) -> None:
-        
-        # reduce last positions to the latest 10 elements
-        # remove also positions if they are older than 5 minutes
-        if 'gnss_positions' in data:
-
-            data['gnss_positions'] = data['gnss_positions'][-10:]
-
-            updated_gnss_positions: list[dict] = []
-            current_timestamp: int = unixtimestamp()
-            for gnss_position in data['gnss_positions']:
-                if gnss_position['timestamp'] > current_timestamp - 300:
-                    updated_gnss_positions.append(gnss_position)
-
-            data['gnss_positions'] = updated_gnss_positions
+        data = self._cleanup_vehicle_activity_gnss(data)        
         
         self._db.vehicle_activities.update_one(
             {'vehicle_ref': vehicle_ref},
             {'$set': data},
             upsert=True
         )
+
+    def _cleanup_vehicle_activity_gnss(self, data: dict) -> dict:
+        
+        # reduce last positions to the latest 10 elements
+        # remove also positions if they are older than 5 minutes
+        if 'gnss_positions' in data:
+
+            data['gnss_positions'] = data['gnss_positions'][-12:]
+
+            updated_gnss_positions: list[dict] = []
+            current_timestamp: int = unixtimestamp()
+            for gnss_position in data['gnss_positions']:
+                if gnss_position['timestamp'] > current_timestamp - 60:
+                    updated_gnss_positions.append(gnss_position)
+
+            data['gnss_positions'] = updated_gnss_positions
+
+        return data
 
     def close(self):
         self._mdb.close()
