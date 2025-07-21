@@ -83,9 +83,6 @@ class SpatialVectorCollection:
         return bearing_vector.bearing()
     
     def is_movement(self, min_distance: int = 30) -> bool:
-        if len(self.spatial_vectors) < 2:
-            return False
-        
         total_distance: float = self.length()
         direct_distance: float = SpatialVector(
             self.spatial_vectors[0].start,
