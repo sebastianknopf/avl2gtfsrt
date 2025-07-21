@@ -8,3 +8,4 @@ class AvlMatcher:
 
     def process(self, vehicle: dict, gnss_positions: list[dict[str, any]]) -> None:
         activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
+
