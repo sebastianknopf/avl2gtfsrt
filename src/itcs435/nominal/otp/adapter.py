@@ -3,5 +3,5 @@ from itcs435.nominal.otp.otpclient import OtpClient
 
 class OtpAdapter(BaseNominalAdapter):
 
-    def cache_trip_candidates_by_position(self, latitude, longitude):
+    def get_trip_candidates(self, latitude, longitude):
         raise NotImplementedError()
