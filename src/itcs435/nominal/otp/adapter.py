@@ -4,15 +4,15 @@ import requests
 from datetime import datetime, timezone
 
 from itcs435.common.env import is_debug
-from itcs435.nominal.baseadapter import BaseNominalAdapter
+from itcs435.nominal.baseadapter import BaseAdapter
 
 
-class OtpAdapter(BaseNominalAdapter):
+class OtpAdapter(BaseAdapter):
 
     def __init__(self, endpoint: str):
         self._endpoint = endpoint
         
-    def get_trip_candidates(self, lat: float, lon: float) -> dict:
+    def get_trip_candidates(self, lat: float, lon: float) -> list[dict]:
         query = """
         query TripCandidates($lat: Float!, $lon: Float!, $startTime: DateTime!) {
           nearest(latitude: $lat, longitude: $lon, maximumDistance: 200, filterByPlaceTypes:stopPlace) {
@@ -59,7 +59,11 @@ class OtpAdapter(BaseNominalAdapter):
         }
         
         data: dict = self._request(query, variables)
-        return data.get('data', {}).get('nearest', {})
+
+        if 'data' in data and 'nearest' in data['data'] and len(data['data']['nearest'].get('edges', [])) > 0:
+            return data['data']['nearest'].get('edges', [])[0].get('node', {}).get('place', {}).get('estimatedCalls', [])
+        else: 
+            return []
         
     def _request(self, query: str, variables: dict) -> dict:
         try:

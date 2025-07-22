@@ -1,7 +1,7 @@
 import logging
 
 from itcs435.common.env import is_set
-from itcs435.nominal.baseadapter import BaseNominalAdapter
+from itcs435.nominal.baseadapter import BaseAdapter
 
 
 class NominalDataClient:
@@ -11,19 +11,22 @@ class NominalDataClient:
         self._adapter_config = adapter_config
 
     def get_trip_candidates(self, latitude: float, longitude: float) -> list[dict]:
-        adapter: BaseNominalAdapter = self._get_configured_adapter()
+        adapter: BaseAdapter = self._get_configured_adapter()
 
         try:
             logging.info(f"Running nominal adapter of type {self._adapter_type} ...")
-            adapter.get_trip_candidates(latitude, longitude)
+            result: dict = adapter.get_trip_candidates(latitude, longitude)
+
+            return result
+        
         except Exception as ex:
             if is_set('ITCS435_DEBUG'):
                 logging.exception(ex)
             else:
                 logging.error(str(ex))
 
-    def _get_configured_adapter(self) -> BaseNominalAdapter:
-        adapter: BaseNominalAdapter = None
+    def _get_configured_adapter(self) -> BaseAdapter:
+        adapter: BaseAdapter = None
         
         if self._adapter_type == 'otp':
             from itcs435.nominal.otp.adapter import OtpAdapter
