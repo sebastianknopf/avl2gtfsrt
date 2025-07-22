@@ -7,6 +7,7 @@ from typing import cast
 from itcs435.avl.avlmatcher import AvlMatcher
 from itcs435.common.env import is_set
 from itcs435.common.mqtt import get_tls_value
+from itcs435.common.shared import unixtimestamp
 from itcs435.vdv.vdv435 import AbstractBasicStructure
 from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
 from itcs435.iom.basehandler import AbstractHandler
@@ -29,6 +30,11 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         latitude: float = msg.gnss_physical_position.wgs_84_physical_position.latitude
         longitude: float = msg.gnss_physical_position.wgs_84_physical_position.longitude
 
+        # verify that the GNSS timestamp is not older than 60 seconds
+        current_timestamp: int = unixtimestamp()    
+        if timestamp < current_timestamp - 60:
+            raise RuntimeError(f"GNSS timestamp {timestamp} is older than 60 seconds")
+
         # update vehicle activity data
         vehicle_activity: dict = self._object_storage.get_vehicle_activity(vehicle_ref)
         if vehicle_activity is None:
@@ -45,7 +51,9 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
         self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
 
-        # check whether AVL processing is enabled and process position data
+        # run all other processing steps
+        
+        # check whether AVL processing is enabled
         if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
 
             # check if the vehicle is not operationally logged on
