@@ -14,7 +14,7 @@ class NominalDataClient:
         adapter: BaseNominalAdapter = self._get_configured_adapter()
 
         try:
-            logging.info(f"Running nominal adapter {self._adapter_type} ...")
+            logging.info(f"Running nominal adapter of type {self._adapter_type} ...")
             adapter.get_trip_candidates(latitude, longitude)
         except Exception as ex:
             if is_set('ITCS435_DEBUG'):

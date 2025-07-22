@@ -49,7 +49,7 @@ class ObjectStorage:
         
         # reduce last positions to the latest 10 elements
         # remove also positions if they are older than 5 minutes
-        if 'gnss_positions' in data:
+        if data is not None and 'gnss_positions' in data:
 
             data['gnss_positions'] = data['gnss_positions'][-12:]
 

@@ -62,7 +62,7 @@ class SpatialVectorCollection:
         if len(gnss_positions) < 2:
             raise ValueError('At least 2 GNSS positions are required for creating a vector or vector collection!')
 
-        for p in range(0, len(gnss_positions)):
+        for p in range(0, len(gnss_positions) - 1):
             pos1: dict[str, any] = gnss_positions[p]
             pos2: dict[str, any] = gnss_positions[p + 1]
 

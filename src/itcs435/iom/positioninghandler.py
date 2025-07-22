@@ -45,26 +45,24 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
         self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
 
-        if len(vehicle_activity['gnss_positions']) > 1:
+        # check whether AVL processing is enabled and process position data
+        if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
 
-            # check whether AVL processing is enabled and process position data
-            if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
-
-                # check if the vehicle is not operationally logged on
-                # request all possible trip candidates in that case
-                # otherwise use the cached trip candidates
-                if vehicle.get('is_operationally_logged_on', False):
-                    client: NominalDataClient = NominalDataClient(
-                        os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
-                        json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
-                    )
-
-                    trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
-                else:
-                    trip_candidates: list[dict]|None = None
-
-                matcher: AvlMatcher = AvlMatcher(
-                    self._object_storage.get_vehicles(),
-                    trip_candidates
+            # check if the vehicle is not operationally logged on
+            # request all possible trip candidates in that case
+            # otherwise use the cached trip candidates
+            if not vehicle.get('is_operationally_logged_on', False):
+                client: NominalDataClient = NominalDataClient(
+                    os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
+                    json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
                 )
-                matcher.process(vehicle, vehicle_activity['gnss_positions'])
+
+                trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
+            else:
+                trip_candidates: list[dict]|None = None
+
+            matcher: AvlMatcher = AvlMatcher(
+                self._object_storage.get_vehicles(),
+                trip_candidates
+            )
+            matcher.process(vehicle, vehicle_activity['gnss_positions'])

@@ -8,5 +8,6 @@ class AvlMatcher:
         self._trip_candidates = trip_candidates
 
     def process(self, vehicle: dict, gnss_positions: list[dict[str, any]]) -> None:
-        activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
+        if len(gnss_positions) > 1:
+            activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
 
