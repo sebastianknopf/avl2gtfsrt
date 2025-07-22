@@ -1,7 +1,7 @@
-import logging
+import json
 import os
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import cast
 
 from itcs435.avl.avlmatcher import AvlMatcher
@@ -55,7 +55,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                 # otherwise use the cached trip candidates
                 if vehicle.get('is_operationally_logged_on', False):
                     client: NominalDataClient = NominalDataClient(
-                        os.getenv('')
+                        os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
+                        json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
                     )
 
                     trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
