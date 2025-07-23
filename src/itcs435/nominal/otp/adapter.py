@@ -21,7 +21,7 @@ class OtpAdapter(BaseAdapter):
                 distance,
                 place {
                   ... on StopPlace {
-                    id,
+                    id
                     estimatedCalls(startTime: $startTime, numberOfDepartures: 15) {
                       serviceJourney {
                         id,
@@ -34,12 +34,12 @@ class OtpAdapter(BaseAdapter):
                           points
                         }
                         estimatedCalls {
-                          aimedArrivalTime,
-                          aimedDepartureTime,
+                          aimedArrivalTime
+                          aimedDepartureTime
                             quay {
-                            id,
-                            latitude,
-                            longitude
+                              id
+                              latitude
+                              longitude
                           }
                         }
                       }
