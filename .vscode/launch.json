@@ -27,7 +27,7 @@
             "args": ["${input:simulationLineNumber}"],
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
-            "env": {"PYTHONPATH": "${workspaceRoot}/src"}
+            "envFile": "${workspaceFolder}/dev.env"
         },
         {
             "name": "XMLGEN",
