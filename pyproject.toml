@@ -17,7 +17,9 @@ dependencies = [
     "pydantic",
     "pymongo",
     "pyyaml",
+    "pyproj",
     "requests",
+    "shapely",
     "uvicorn",
     "xmltodict"
 ]
