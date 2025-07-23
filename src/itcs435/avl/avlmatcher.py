@@ -30,7 +30,7 @@ class AvlMatcher:
 
                     # run spatial matching for trip candidate
                     spatial_match: SpatialMatch = SpatialMatch(trip_candidate['serviceJourney']['pointsOnLink']['points'])
-                    match_score: float = spatial_match.get_match_score(activity)
+                    match_score: float = spatial_match.calculate_match_score(activity)
                     if match_score == 0.0:
                         logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to spatial matching failure.")
                         continue
