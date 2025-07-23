@@ -20,6 +20,16 @@
             ]
         },
         {
+            "name": "Simulation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/util/simulation.py",
+            "args": ["${input:simulationLineNumber}"],
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "env": {"PYTHONPATH": "${workspaceRoot}/src"}
+        },
+        {
             "name": "XMLGEN",
             "type": "debugpy",
             "request": "launch",
@@ -27,6 +37,14 @@
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
             "env": {"PYTHONPATH": "${workspaceRoot}/src"}
+        }
+        
+    ],
+    "inputs": [
+        {
+            "id": "simulationLineNumber",
+            "type": "promptString",
+            "description": "Enter the line number to start the simulation"
         }
     ]
 }
