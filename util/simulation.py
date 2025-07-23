@@ -7,8 +7,7 @@ from datetime import datetime, timezone
 from paho.mqtt import client as mqtt
 
 
-log_on_message: str = """
-<?xml version="1.0" encoding="utf-8"?>
+log_on_message: str = """<?xml version="1.0" encoding="utf-8"?>
 <TechnicalVehicleLogOnRequestStructure version="1.0" xmlns:netex="http://netex-cen.org">
 	<Timestamp>{timestamp}</Timestamp>
 	<MessageId>{messageId}</MessageId>
@@ -16,8 +15,7 @@ log_on_message: str = """
 </TechnicalVehicleLogOnRequestStructure>
 """
 
-gnss_physical_position_message: str = """
-<?xml version="1.0" encoding="utf-8"?>
+gnss_physical_position_message: str = """<?xml version="1.0" encoding="utf-8"?>
 <GnssPhysicalPositionDataStructure version="1.0">
         <Timestamp>{timestamp}</Timestamp>
         <TimestampOfMeasurement>{timestampOfMeasurement}</TimestampOfMeasurement>
