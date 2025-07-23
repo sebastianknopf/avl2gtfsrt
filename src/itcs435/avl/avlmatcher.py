@@ -31,7 +31,7 @@ class AvlMatcher:
                     # add buffer of 5 meters to the shape
                     trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_candidate['serviceJourney']['pointsOnLink']['points'])])
                     trip_shape = transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, trip_shape)
-                    buffered_trip_shape: Polygon = trip_shape.buffer(25.0)
+                    buffered_trip_shape: Polygon = trip_shape.buffer(15.0)
 
                     # check if the GNSS coordinate activty matches the trip candidate
                     activity_shape: LineString = activity.get_web_mercator_line_string()
@@ -42,9 +42,12 @@ class AvlMatcher:
                     # check if the activity runs into the same direction as the trip candidate
                     projections = [trip_shape.project(Point(p)) for p in activity_shape.coords]
                     if not all(earlier <= later for earlier, later in zip(projections, projections[1:])):
-                        logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded because vehicle activity does not run into the same direction as the trip geometry.")
+                        logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded because vehicle activity runs into the opposite direction as the trip geometry.")
                         continue
 
                     logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} matched for vehicle {vehicle.get('vehicle_ref')}.")
             else:
                 logging.warning(f"{self.__class__.__name__}: Not enough GNSS positions to match AVL data for vehicle {vehicle.get('vehicle_ref')}. At least two positions are required.")
+
+        else:
+            logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
