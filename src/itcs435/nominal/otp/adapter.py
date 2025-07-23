@@ -1,7 +1,7 @@
 import logging
 import requests
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from itcs435.common.env import is_debug
 from itcs435.nominal.baseadapter import BaseAdapter
@@ -22,7 +22,7 @@ class OtpAdapter(BaseAdapter):
                 place {
                   ... on StopPlace {
                     id,
-                    estimatedCalls(startTime: $startTime, numberOfDepartures: 5) {
+                    estimatedCalls(startTime: $startTime, numberOfDepartures: 15) {
                       serviceJourney {
                         id,
                         journeyPattern {
@@ -52,10 +52,13 @@ class OtpAdapter(BaseAdapter):
         }
         """
         
-        variables = {
+        reference_timestamp: datetime = datetime.now(timezone.utc).replace(microsecond=0)
+        reference_timestamp = reference_timestamp - timedelta(minutes=5)
+
+        variables: dict = {
           'lat': lat,
           'lon': lon,
-          'startTime': datetime.now(timezone.utc).isoformat()
+          'startTime': reference_timestamp.isoformat()
         }
         
         data: dict = self._request(query, variables)
