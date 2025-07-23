@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import cast
 
 from itcs435.avl.avlmatcher import AvlMatcher
+from itcs435.avl.spatialvector import SpatialVectorCollection
 from itcs435.common.env import is_set
 from itcs435.common.mqtt import get_tls_value
 from itcs435.common.shared import unixtimestamp
@@ -61,21 +62,27 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # check whether AVL processing is enabled
         if is_set('ITCS435_AVL_PROCESSING_ENABLED'):
 
-            # check if the vehicle is not operationally logged on
-            # request all possible trip candidates in that case
-            # otherwise use the cached trip candidates
-            if not vehicle.get('is_operationally_logged_on', False):
-                client: NominalDataClient = NominalDataClient(
-                    os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
-                    json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
+            activity: SpatialVectorCollection = SpatialVectorCollection(vehicle_activity['gnss_positions'])
+
+            # matching is only possible if the vehicle is moving
+            # remember: we need at sequence of movement coordinates to match the trip!
+            if activity.is_movement():
+
+                # check if the vehicle is not operationally logged on
+                # request all possible trip candidates in that case
+                # otherwise use the cached trip candidates
+                if not vehicle.get('is_operationally_logged_on', False):
+                    client: NominalDataClient = NominalDataClient(
+                        os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
+                        json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
+                    )
+
+                    trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
+                else:
+                    trip_candidates: list[dict]|None = None
+
+                matcher: AvlMatcher = AvlMatcher(
+                    self._object_storage.get_vehicles(),
+                    trip_candidates
                 )
-
-                trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
-            else:
-                trip_candidates: list[dict]|None = None
-
-            matcher: AvlMatcher = AvlMatcher(
-                self._object_storage.get_vehicles(),
-                trip_candidates
-            )
-            matcher.process(vehicle, vehicle_activity['gnss_positions'])
+                matcher.process(vehicle, vehicle_activity['gnss_positions'])

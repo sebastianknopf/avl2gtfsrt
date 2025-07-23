@@ -31,7 +31,7 @@ class SpatialVector:
 
         return self._cached_bearing
 
-    def _haversine_distance(coord1: tuple[float, float], coord2: tuple[float, float]) -> float:
+    def _haversine_distance(self, coord1: tuple[float, float], coord2: tuple[float, float]) -> float:
         lat1, lon1 = map(math.radians, coord1)
         lat2, lon2 = map(math.radians, coord2)
 
@@ -43,7 +43,7 @@ class SpatialVector:
 
         return 6371000 * c
     
-    def _calculate_bearing(coord1: tuple[float, float], coord2: tuple[float, float]) -> float:
+    def _calculate_bearing(self, coord1: tuple[float, float], coord2: tuple[float, float]) -> float:
         lat1, lon1 = map(math.radians, coord1)
         lat2, lon2 = map(math.radians, coord2)
 
