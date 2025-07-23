@@ -85,15 +85,6 @@ class SpatialVectorCollection:
         )
 
         return bearing_vector.bearing()
-    
-    def get_web_mercator_line_string(self) -> LineString:
-        coords = [(v.start['longitude'], v.start['latitude']) for v in self.spatial_vectors]
-        coords.append((self.spatial_vectors[-1].end['longitude'], self.spatial_vectors[-1].end['latitude']))
-        
-        line_string: LineString = LineString(coords)
-        line_string = transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, line_string)
-
-        return line_string
 
     def is_movement(self, min_distance: int = 30) -> bool:
         total_distance: float = self.length()
