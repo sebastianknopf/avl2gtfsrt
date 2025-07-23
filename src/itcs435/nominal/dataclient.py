@@ -14,7 +14,7 @@ class NominalDataClient:
         adapter: BaseAdapter = self._get_configured_adapter()
 
         try:
-            logging.info(f"Running nominal adapter of type {self._adapter_type} ...")
+            logging.info(f"{self.__class__.__name__}: Loading trip candidates with adapter of type {self._adapter_type} ...")
             result: dict = adapter.get_trip_candidates(latitude, longitude)
 
             return result

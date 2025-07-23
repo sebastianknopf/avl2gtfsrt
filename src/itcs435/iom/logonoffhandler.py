@@ -1,3 +1,5 @@
+import logging
+
 from typing import cast
 
 from itcs435.vdv.vdv435 import AbstractBasicStructure
@@ -22,6 +24,8 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
             response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
             response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
 
+            logging.info(f"{self.__class__.__name__}: Vehicle {vehicle_ref} logged on successfully.")
+
             return response
         else:
             response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
@@ -29,6 +33,8 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
             response.technical_vehicle_log_on_response_error = TechnicalVehicleLogOnResponseErrorStructure(
                 TechnicalVehicleLogOnResponseCode='doubleLogOn'
             )
+
+            logging.error(f"{self.__class__.__name__}: Vehicle {vehicle_ref} tried to log on but is already logged on.")
 
             return response
         
@@ -48,6 +54,8 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
             response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
             response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()
 
+            logging.info(f"{self.__class__.__name__}: Vehicle {vehicle_ref} logged off successfully.")
+
             return response
         else:
             response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
@@ -55,5 +63,7 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
             response.technical_vehicle_log_off_response_error = TechnicalVehicleLogOffResponseErrorStructure(
                 TechnicalVehicleLogOffResponseCode='vehicleNotLoggedOn'
             )
+
+            logging.error(f"{self.__class__.__name__}: Vehicle {vehicle_ref} tried to log off but is not logged on.")
 
             return response

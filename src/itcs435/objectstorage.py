@@ -1,13 +1,9 @@
-import logging
-
 from pymongo import MongoClient
 
 from itcs435.common.shared import unixtimestamp
 
 class ObjectStorage:
     def __init__(self, username: str, password: str, db_name: str = 'itcs435'):
-        
-        logging.info("Connecting to MongoDB ...")
         self._mdb = MongoClient(f"mongodb://{username}:{password}@mongodb:27017/?authSource=admin")
 
         self._db = self._mdb[db_name]

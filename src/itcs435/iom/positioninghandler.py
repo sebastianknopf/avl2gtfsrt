@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 from datetime import datetime
@@ -23,7 +24,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # verify that the vehicle is technically logged on
         vehicle: dict = self._object_storage.get_vehicle(vehicle_ref)
         if vehicle is None or not vehicle.get('is_technically_logged_on', False):
-            raise RuntimeError(f"Vehicle {vehicle_ref} is not technically logged on")
+            raise RuntimeError(f"Vehicle {vehicle_ref} is not technically logged on.")
 
         # extract data from the message
         timestamp: int = int(datetime.fromisoformat(msg.timestamp_of_measurement).timestamp())
@@ -33,7 +34,9 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # verify that the GNSS timestamp is not older than 60 seconds
         current_timestamp: int = unixtimestamp()    
         if timestamp < current_timestamp - 60:
-            raise RuntimeError(f"GNSS timestamp {timestamp} is older than 60 seconds")
+            logging.warning(f"{self.__class__.__name__}: GNSS data update for vehicle {vehicle_ref} is older than 60 seconds and will be ignored.")
+
+            return
 
         # update vehicle activity data
         vehicle_activity: dict = self._object_storage.get_vehicle_activity(vehicle_ref)
@@ -50,6 +53,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         })
 
         self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+
+        logging.info(f"{self.__class__.__name__}: Processed GNSS data update for vehicle {vehicle_ref} successfully.")
 
         # run all other processing steps
         

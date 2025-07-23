@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import threading
+import time
 
 from paho.mqtt import client as mqtt
 
@@ -31,6 +32,7 @@ class IomWorker:
         mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
         mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
 
+        logging.info(f"{self.__class__.__name__}: Connecting to MongoDB ...")
         self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
 
         # create IoM instance
@@ -46,13 +48,13 @@ class IomWorker:
         self._should_run.set()
 
     def _signal_handler(self, signum, frame):
-        logging.info(f'Received signal {signum}')
+        logging.info(f'{self.__class__.__name__}: Received signal {signum}')
         self._should_run.clear()
 
     def _on_connect(self, client, userdata, flags, rc, properties):
         if not rc.is_failure:
             for topic, qos in self._iom.get_subscribed_topics():
-                logging.info(f"Subscribing to topic: {topic}")
+                logging.info(f"{self.__class__.__name__}: Subscribing to topic: {topic}")
                 self._mqtt.subscribe(topic, qos=qos)
 
     def _on_message(self, client, userdata, message):
@@ -66,13 +68,17 @@ class IomWorker:
 
     def _on_disconnect(self, client, userdata, flags, rc, properties):
         for topic, qos in self._iom.get_subscribed_topics():
-            logging.info(f"Unsubscribing from topic: {topic}")
+            logging.info(f"{self.__class__.__name__}: Unsubscribing from topic: {topic}")
             self._mqtt.unsubscribe(topic)
 
     def run(self) -> None:
         # register signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+        # wait for 5s to startup network adapters in container
+        #logging.info(f"{self.__class__.__name__}: Waiting for network adapters to start ...")
+        #time.sleep(5)
 
         # set username and password if provided
         mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
@@ -84,32 +90,32 @@ class IomWorker:
         mqtt_host: str = os.getenv('ITCS435_WORKER_MQTT_HOST', 'test.mosquitto.org')
         mqtt_port: str = os.getenv('ITCS435_WORKER_MQTT_PORT', '1883')
 
-        logging.info(f"Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
+        logging.info(f"{self.__class__.__name__}: Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
         self._mqtt.connect(mqtt_host, int(mqtt_port))
         self._mqtt.loop_start()
 
         # start publisher server
-        logging.info("Starting SIRI publisher ...")
-        self._publisher.start()
+        logging.info(f"{self.__class__.__name__}: Starting SIRI publisher ...")
+        # self._publisher.start()
 
-        logging.info("Worker startup complete.")
+        logging.info(f"{self.__class__.__name__}: Worker startup complete.")
 
         try:
             # watch self._should_run for stopping gracefully
             while self._should_run.is_set():
                 pass
         except Exception as ex:
-            logging.error(f"Exception in worker: {ex}")
+            logging.error(f"{self.__class__.__name__}: Exception in worker: {ex}")
         finally:
 
-            logging.info("Shutting down MQTT connection...")
+            logging.info(f"{self.__class__.__name__}: Shutting down MQTT connection...")
             self._mqtt.loop_stop()
             self._mqtt.disconnect()
 
-            logging.info("Shutting down SIRI publisher ...")
-            self._publisher.stop()
+            logging.info(f"{self.__class__.__name__}: Shutting down SIRI publisher ...")
+            #self._publisher.stop()
 
-            logging.info("Closing MongoDB connection ...")
+            logging.info(f"{self.__class__.__name__}: Closing MongoDB connection ...")
             self._object_storage.close()
 
-            logging.info("Worker shutdown complete.")
+            logging.info(f"{self.__class__.__name__}: Worker shutdown complete.")

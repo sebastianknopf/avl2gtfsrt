@@ -151,4 +151,4 @@ class IomProcessor:
             retain
         )
 
-        logging.info(f"Published message to topic: {tls_str}")
+        logging.info(f"{self.__class__.__name__}: Published message to topic: {tls_str}")
