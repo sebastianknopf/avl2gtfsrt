@@ -37,8 +37,12 @@ class AvlMatcher:
                         continue
 
                     # run temporal matching for trip candidate
-                    temporal_match: TemporalMatch = TemporalMatch(trip_candidate['estimatedCalls'], trip_candidate['serviceJourney']['pointsOnLink']['points'])
-                    match_score: float = temporal_match.calculate_match_score(activity)
+                    temporal_match: TemporalMatch = TemporalMatch(
+                        trip_candidate['serviceJourney']['estimatedCalls'], 
+                        trip_candidate['serviceJourney']['pointsOnLink']['points']
+                    )
+
+                    match_score: float = temporal_match.calculate_match_score(spatial_match.spatial_progress_percentage)
                     if match_score == 0.0:
                         logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to temporal matching failure.")
                         continue
