@@ -14,5 +14,8 @@ def unixtimestamp() -> int:
 def uid() -> str:
     return str(uuid.uuid4())
 
-def web_mercator(self, shape: object) -> object:
+def web_mercator(shape: object) -> object:
     return transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, shape)
+
+def clamp(value: float|int, min_value: float|int, max_value: float|int) -> float|int:
+    return max(min_value, min(max_value, value))
