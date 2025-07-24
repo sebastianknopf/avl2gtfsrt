@@ -2,9 +2,8 @@ import logging
 import polyline
 
 from shapely.geometry import LineString, Polygon, Point
-from shapely.ops import transform
-from pyproj import CRS, Transformer
 
+from itcs435.common.shared import web_mercator
 from itcs435.avl.spatialvector import SpatialVectorCollection
 
 
@@ -17,7 +16,7 @@ class SpatialMatch:
         
         # transform shape of the trip candidate into a LineString
         self._trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_shape_polyline)])
-        self._trip_shape = self._transform_to_web_mercator(self._trip_shape)
+        self._trip_shape = web_mercator(self._trip_shape)
         
         # add buffer around trip shape to allow for some tolerance in matching
         self._buffered_trip_shape: Polygon = self._trip_shape.buffer(self.TRIP_SHAPE_BUFFER_SIZE)
@@ -31,7 +30,7 @@ class SpatialMatch:
         activity_coords.append((vehicle_activity.spatial_vectors[-1].end['longitude'], vehicle_activity.spatial_vectors[-1].end['latitude']))
         
         self._activity_shape: LineString = LineString(activity_coords)
-        self._activity_shape = self._transform_to_web_mercator(self._activity_shape)
+        self._activity_shape = web_mercator(self._activity_shape)
 
         # calculate percentual progress of the trip determined by position
         self.spatial_progress_percentage = self._trip_shape.project(Point(self._activity_shape.coords[-1])) / self._trip_shape.length * 100.0
@@ -59,6 +58,3 @@ class SpatialMatch:
             logging.info(f"{self.__class__.__name__}: Vehicle activity matched trip geometry with forward movement ratio of {self.match_score:.2f}, spatial progress percentage is {self.spatial_progress_percentage:.2f}%.")
 
             return self.match_score
-        
-    def _transform_to_web_mercator(self, shape):
-        return transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, shape)

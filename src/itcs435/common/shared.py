@@ -1,6 +1,8 @@
 import uuid
 
 from datetime import datetime, timezone
+from shapely.ops import transform
+from pyproj import CRS, Transformer
 
 def isotimestamp() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -11,3 +13,6 @@ def unixtimestamp() -> int:
 
 def uid() -> str:
     return str(uuid.uuid4())
+
+def web_mercator(self, shape: object) -> object:
+    return transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, shape)
