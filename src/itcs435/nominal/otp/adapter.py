@@ -15,13 +15,13 @@ class OtpAdapter(BaseAdapter):
     def get_trip_candidates(self, lat: float, lon: float) -> list[dict]:
         query = """
         query TripCandidates($lat: Float!, $lon: Float!, $startTime: DateTime!) {
-          nearest(latitude: $lat, longitude: $lon, maximumDistance: 200, filterByPlaceTypes:stopPlace) {
+          nearest(latitude: $lat, longitude: $lon, maximumDistance: 200, filterByPlaceTypes: stopPlace) {
             edges {
               node {
                 distance,
                 place {
                   ... on StopPlace {
-                    id
+                    id,
                     estimatedCalls(startTime: $startTime, numberOfDepartures: 15) {
                       serviceJourney {
                         id,
@@ -36,10 +36,11 @@ class OtpAdapter(BaseAdapter):
                         estimatedCalls {
                           aimedArrivalTime
                           aimedDepartureTime
-                            quay {
-                              id
-                              latitude
-                              longitude
+                          stopPositionInPattern
+                          quay {
+                            id
+                            latitude
+                            longitude
                           }
                         }
                       }

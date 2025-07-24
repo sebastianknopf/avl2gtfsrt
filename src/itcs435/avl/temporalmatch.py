@@ -16,9 +16,12 @@ class TemporalMatch:
         self._trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_shape_polyline)])
         self._trip_shape = web_mercator(self._trip_shape)
 
+        self._stop_projections_on_trip_shape: dict = {c['stopPositionInPattern']: self._trip_shape.project(web_mercator(Point(c['quay']['longitude'], c['quay']['latitude']))) for c in estimated_calls}
+
         # containers for later calculated data
-        self.match_score: float = 0.0
         self.time_based_progress_percentage: float = 0.0
+        self.match_score: float = 0.0
+        self.next_stop_index: int|None = None
 
         # do not use unixtimestamp here, as we need the timestamp in minutes, without seconds!!!
         current_timestamp: int = int(datetime.now(timezone.utc).replace(microsecond=0, second=0).timestamp())
@@ -55,6 +58,8 @@ class TemporalMatch:
                 self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
 
+                self.next_stop_index = next_call['stopPositionInPattern']
+
                 break
 
         # if self.time_based_progress_percentage has not been touched and last value set to next_departure is smaller than current timestamp
@@ -86,6 +91,16 @@ class TemporalMatch:
         self.match_score = 1.0 - deviation_percentage / 100.0
 
         return self.match_score
+    
+    def calculate_next_stop_index(self, spatial_progress: float) -> int|None:
+        for i, p in self._stop_projections_on_trip_shape.items():
+            stop_percentage: float = p / self._trip_shape.length * 100.0
+            if stop_percentage > spatial_progress:
+                self.next_stop_index = i
+                return self.next_stop_index
+            
+        self.next_stop_index = None
+        return None
 
 
 
