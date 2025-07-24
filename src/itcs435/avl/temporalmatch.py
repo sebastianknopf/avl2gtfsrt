@@ -33,27 +33,35 @@ class TemporalMatch:
             next_departure: int = int(datetime.fromisoformat(next_call['aimedDepartureTime'] if 'aimedDepartureTime' in next_call else next_call['aimedArrivalTime']).timestamp())
 
             # if the current timestamp
-            """if this_departure <= current_timestamp:
-                pass"""
+            if this_departure <= current_timestamp <= next_departure:
 
-            # calculate the percentual progress of the trip based on the current timestamp
-            this_duration: int = abs(current_timestamp - this_departure)
-            next_duration: int = abs(next_departure - this_departure)
+                # calculate the percentual progress of the trip based on the current timestamp
+                this_duration: int = abs(current_timestamp - this_departure)
+                next_duration: int = abs(next_departure - this_departure)
 
-            time_based_progress: float = (this_duration / next_duration) if next_duration > 0.0 else 1.0
+                time_based_progress: float = (this_duration / next_duration) if next_duration > 0.0 else 1.0
 
-            # calculate the projection length based on the time-based progress
-            next_point: Point = Point(next_call['quay']['longitude'], next_call['quay']['latitude'])
-            next_point = web_mercator(next_point)
+                # calculate the projection length based on the time-based progress
+                this_point: Point = Point(next_call['quay']['longitude'], next_call['quay']['latitude'])
+                this_point = web_mercator(this_point)
 
-            next_projection: float = self._trip_shape.project(next_point)
-            
-            self.time_based_progress_percentage: float = next_projection * time_based_progress / self._trip_shape.length * 100.0
-            self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
+                this_projection: float = self._trip_shape.project(this_point)
 
-            # if we have found a progress on the trip, break here
-            if self.time_based_progress_percentage != 0.0 and self.time_based_progress_percentage != 100.0:
-                break        
+                next_point: Point = Point(next_call['quay']['longitude'], next_call['quay']['latitude'])
+                next_point = web_mercator(next_point)
+
+                next_projection: float = self._trip_shape.project(next_point)
+                
+                self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
+                self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
+
+                break
+
+        # if self.time_based_progress_percentage has not been touched and last value set to next_departure is smaller than current timestamp
+        # the whole trip is passed by. Set progress to 100%
+        if self.time_based_progress_percentage == 0.0 and next_departure < current_timestamp:
+            self.time_based_progress_percentage = 100.0    
+        
 
     def calculate_match_score(self, spatial_progress_value: float) -> float:
         
