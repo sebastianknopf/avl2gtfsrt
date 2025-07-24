@@ -1,6 +1,7 @@
 import logging
 
 from itcs435.avl.spatialmatch import SpatialMatch
+from itcs435.avl.temporalmatch import TemporalMatch
 from itcs435.avl.spatialvector import SpatialVectorCollection
 
 class AvlMatcher:
@@ -35,7 +36,14 @@ class AvlMatcher:
                         logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to spatial matching failure.")
                         continue
 
-                    logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} matched for vehicle {vehicle.get('vehicle_ref')}.")
+                    # run temporal matching for trip candidate
+                    temporal_match: TemporalMatch = TemporalMatch(trip_candidate['estimatedCalls'], trip_candidate['serviceJourney']['pointsOnLink']['points'])
+                    match_score: float = temporal_match.calculate_match_score(activity)
+                    if match_score == 0.0:
+                        logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to temporal matching failure.")
+                        continue
+
+                    logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} matched for vehicle {vehicle.get('vehicle_ref')} with total match score of {match_score}.")
             else:
                 logging.warning(f"{self.__class__.__name__}: Not enough GNSS positions to match AVL data for vehicle {vehicle.get('vehicle_ref')}. At least two positions are required.")
 
