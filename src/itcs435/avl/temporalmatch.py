@@ -45,15 +45,8 @@ class TemporalMatch:
                 time_based_progress: float = (this_duration / next_duration) if next_duration > 0.0 else 1.0
 
                 # calculate the projection length based on the time-based progress
-                this_point: Point = Point(next_call['quay']['longitude'], next_call['quay']['latitude'])
-                this_point = web_mercator(this_point)
-
-                this_projection: float = self._trip_shape.project(this_point)
-
-                next_point: Point = Point(next_call['quay']['longitude'], next_call['quay']['latitude'])
-                next_point = web_mercator(next_point)
-
-                next_projection: float = self._trip_shape.project(next_point)
+                this_projection: float = self._stop_projections_on_trip_shape[this_call['stopPositionInPattern']]
+                next_projection: float = self._stop_projections_on_trip_shape[next_call['stopPositionInPattern']]
                 
                 self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
