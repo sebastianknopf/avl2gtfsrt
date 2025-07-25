@@ -99,11 +99,9 @@ class TemporalMatch:
     def predict_next_stop_metrics(self, spatial_progress: float) -> tuple[int]|None:
         
         # find out which will be the next stop based on the current spatial progress
-        next_stop_spatial_progress_percentage: float = 0.0
         for i, p in self._stop_projections_on_trip_shape.items():
             stop_percentage: float = p / self._trip_shape.length * 100.0
             if stop_percentage > spatial_progress:
-                next_stop_spatial_progress_percentage = stop_percentage
                 self.next_stop_index = i
                 break
             
@@ -113,8 +111,8 @@ class TemporalMatch:
             # calculate the relative deviation between the current vehicle progress
             # and the progress of the next nominal stop
             # if the relative deviation is more than 50%, calculate a deviation
-            spatial_deviation_percent: float = (next_stop_spatial_progress_percentage - spatial_progress) / spatial_progress * 100.0 if spatial_progress != 0.0 else 0.0
-            if abs(spatial_deviation_percent) > 25.0:
+            spatial_deviation_percent: float = (self.time_based_progress_percentage - spatial_progress) / self.time_based_progress_percentage * 100.0 if self.time_based_progress_percentage != 0.0 else 0.0
+            if abs(spatial_deviation_percent) > 5.0:
 
                 # calculate time difference between current time and nominal time
                 next_call: dict = self._estimated_calls[self.next_stop_index]
@@ -123,7 +121,7 @@ class TemporalMatch:
                 next_departure_timestamp: int = unixtimestamp(next_call['aimedDepartureTime']) if 'aimedDepartureTime' in next_call else None
 
                 if next_departure_timestamp is not None:
-                    self.next_stop_delay = next_departure_timestamp - current_timestamp
+                    self.next_stop_delay = abs(next_departure_timestamp - current_timestamp) * abs(spatial_deviation_percent / 100.0)
 
                 # if the deviation is negative, then the trip is too early
                 # set negative delay to indicate this
