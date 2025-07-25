@@ -18,6 +18,7 @@ class AvlMatcher:
             if len(gnss_positions) > 1:
                 activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
 
+                scored_trip_candidates: dict = dict()
                 for trip_candidate in self._trip_candidates:
 
                     # check for prerequisites
@@ -50,6 +51,13 @@ class AvlMatcher:
                     next_stop_metrics = temporal_match.predict_next_stop_metrics(spatial_match.spatial_progress_percentage)
 
                     logging.info(f"{self.__class__.__name__}: Trip candidate successfully {trip_candidate['serviceJourney']['id']} matched for vehicle {vehicle.get('vehicle_ref')} with total match score of {match_score}. Next stop index is {next_stop_metrics[0]}, departure delay will be {next_stop_metrics[1]}s.")
+
+                    scored_trip_candidates[trip_candidate['serviceJourney']['id']] = match_score
+
+                # print scored trip candidates
+                if len(scored_trip_candidates) > 0:
+                    for trip_id, score in scored_trip_candidates.items():
+                        logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {score}")
 
             else:
                 logging.warning(f"{self.__class__.__name__}: Not enough GNSS positions to match AVL data for vehicle {vehicle.get('vehicle_ref')}. At least two positions are required.")
