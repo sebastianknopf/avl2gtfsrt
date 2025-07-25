@@ -54,7 +54,7 @@ class OtpAdapter(BaseAdapter):
         """
         
         reference_timestamp: datetime = datetime.now(timezone.utc).replace(microsecond=0)
-        reference_timestamp = reference_timestamp - timedelta(minutes=5)
+        reference_timestamp = reference_timestamp - timedelta(minutes=10)
 
         variables: dict = {
           'lat': lat,
