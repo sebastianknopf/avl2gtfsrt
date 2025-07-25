@@ -24,7 +24,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/util/simulation.py",
-            "args": ["${input:simulationLineNumber}"],
+            "args": ["${input:simulationLineName}"],
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/dev.env"
@@ -42,9 +42,9 @@
     ],
     "inputs": [
         {
-            "id": "simulationLineNumber",
+            "id": "simulationLineName",
             "type": "promptString",
-            "description": "Enter the line number to start the simulation"
+            "description": "Enter the line name to start the simulation"
         }
     ]
 }
