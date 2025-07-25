@@ -25,7 +25,19 @@ class TemporalMatch:
 
         # do not use unixtimestamp here, as we need the timestamp in minutes, without seconds!!!
         current_timestamp: int = int(datetime.now(timezone.utc).replace(microsecond=0, second=0).timestamp())
+
+        # check whether the trip should run currently
+        first_departure: int = int(datetime.fromisoformat(estimated_calls[0]['aimedDepartureTime'] if 'aimedDepartureTime' in estimated_calls[0] else estimated_calls[0]['aimedArrivalTime']).timestamp())
+        last_departure: int = int(datetime.fromisoformat(estimated_calls[-1]['aimedDepartureTime'] if 'aimedDepartureTime' in estimated_calls[-1] else estimated_calls[-1]['aimedArrivalTime']).timestamp())
+
+        if current_timestamp < first_departure:
+            self.time_based_progress_percentage = 0.0
+            return
         
+        if current_timestamp > last_departure:
+            self.time_based_progress_percentage = 100.0
+            return
+
         # calculate the current percentual progress of the trip 
         # based on estimated calls
         for c in range(0, len(estimated_calls) - 1):
@@ -35,7 +47,7 @@ class TemporalMatch:
             this_departure: int = int(datetime.fromisoformat(this_call['aimedDepartureTime'] if 'aimedDepartureTime' in this_call else this_call['aimedArrivalTime']).timestamp())
             next_departure: int = int(datetime.fromisoformat(next_call['aimedDepartureTime'] if 'aimedDepartureTime' in next_call else next_call['aimedArrivalTime']).timestamp())
 
-            # if the current timestamp
+            # if the current timestamp is on/bewteen two stops
             if this_departure <= current_timestamp <= next_departure:
 
                 # calculate the percentual progress of the trip based on the current timestamp
@@ -53,13 +65,7 @@ class TemporalMatch:
 
                 self.next_stop_index = next_call['stopPositionInPattern']
 
-                break
-
-        # if self.time_based_progress_percentage has not been touched and last value set to next_departure is smaller than current timestamp
-        # the whole trip is passed by. Set progress to 100%
-        if self.time_based_progress_percentage == 0.0 and next_departure < current_timestamp:
-            self.time_based_progress_percentage = 100.0    
-        
+                break        
 
     def calculate_match_score(self, spatial_progress_value: float) -> float:
         
