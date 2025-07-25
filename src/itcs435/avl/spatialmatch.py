@@ -9,7 +9,7 @@ from itcs435.avl.spatialvector import SpatialVectorCollection
 
 class SpatialMatch:
 
-    TRIP_SHAPE_BUFFER_SIZE: float = 15.0
+    TRIP_SHAPE_BUFFER_SIZE: float = 50.0
     TRIP_SHAPE_FORWARD_MOVEMENT_RATIO: float = 0.75
 
     def __init__(self, trip_shape_polyline: str) -> None:
@@ -53,6 +53,8 @@ class SpatialMatch:
         if self.match_score < self.TRIP_SHAPE_FORWARD_MOVEMENT_RATIO:
             logging.info(f"{self.__class__.__name__}: Vehicle activity does not move forward along the trip geometry.")
             
+            self.match_score = 0.0
+
             return self.match_score
         else:
             logging.info(f"{self.__class__.__name__}: Vehicle activity matched trip geometry with forward movement ratio of {self.match_score:.2f}, spatial progress percentage is {self.spatial_progress_percentage:.2f}%.")
