@@ -121,11 +121,13 @@ class TemporalMatch:
                 next_departure_timestamp: int = unixtimestamp(next_call['aimedDepartureTime']) if 'aimedDepartureTime' in next_call else None
 
                 if next_departure_timestamp is not None:
-                    self.next_stop_delay = abs(next_departure_timestamp - current_timestamp) * abs(spatial_deviation_percent / 100.0)
+                    self.next_stop_delay = abs(next_departure_timestamp - current_timestamp)
 
                 # if the deviation is negative, then the trip is too early
                 # set negative delay to indicate this
-                if spatial_deviation_percent < 0.0:
+                if spatial_deviation_percent > 0.0:
+                    self.next_stop_delay = int(self.next_stop_delay * abs(spatial_deviation_percent / 100.0))
+                else: 
                     self.next_stop_delay = -(self.next_stop_delay)
 
             else:
