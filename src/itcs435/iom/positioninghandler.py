@@ -86,7 +86,12 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                     matcher: AvlMatcher = AvlMatcher(
                         self._object_storage.get_vehicles(),
-                        trip_candidates
+                        trip_candidates,
+                        vehicle_activity.get('trip_candidate_scores', None)
                     )
                     
-                    matcher.process(vehicle, vehicle_activity['gnss_positions'])
+                    trip_candidate_scores: dict = matcher.process(vehicle, vehicle_activity['gnss_positions'])
+
+                    # save trip candidate scores to vehicle activity
+                    vehicle_activity['trip_candidate_scores'] = trip_candidate_scores
+                    self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)

@@ -3,6 +3,7 @@ import logging
 from itcs435.avl.spatialmatch import SpatialMatch
 from itcs435.avl.temporalmatch import TemporalMatch
 from itcs435.avl.spatialvector import SpatialVectorCollection
+from itcs435.common.statistics import bayesian
 
 class AvlMatcher:
 
@@ -10,7 +11,7 @@ class AvlMatcher:
         self._vehicles = vehicles
         self._trip_candidates = trip_candidates
 
-    def process(self, vehicle: dict, gnss_positions: list[dict[str, any]]) -> None:
+    def process(self, vehicle: dict, gnss_positions: list[dict[str, any]], last_trip_candidate_scores: dict|None) -> dict:
 
         if len(self._trip_candidates) > 0:
             logging.info(f"{self.__class__.__name__}: Matching AVL data for vehicle {vehicle.get('vehicle_ref')} with {len(self._trip_candidates)} possible trip candidates ...")
@@ -18,7 +19,7 @@ class AvlMatcher:
             if len(gnss_positions) > 1:
                 activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
 
-                scored_trip_candidates: dict = dict()
+                trip_candidate_scores: dict[str, float] = dict()
                 for trip_candidate in self._trip_candidates:
 
                     # check for prerequisites
@@ -55,12 +56,25 @@ class AvlMatcher:
 
                     next_stop_metrics = temporal_match.predict_next_stop_metrics(spatial_match.spatial_progress_percentage)
 
-                    scored_trip_candidates[trip_candidate['serviceJourney']['id']] = spatial_match_score * temporal_match_score
+                    # finally calculate trip candidate score and store it for this iteration
+                    trip_candidate_score: float = spatial_match_score * temporal_match_score
+                    trip_candidate_scores[trip_candidate['serviceJourney']['id']] = trip_candidate_score
+
+                # check if there was an update yet
+                # run bayesian filter in order to manifest the trip scores
+                if last_trip_candidate_scores is not None:
+                    trip_candidate_scores = bayesian(
+                        last_trip_candidate_scores,
+                        trip_candidate_scores
+                    )
 
                 # print scored trip candidates
-                if len(scored_trip_candidates) > 0:
-                    for trip_id, score in scored_trip_candidates.items():
+                if len(trip_candidate_scores) > 0:
+                    for trip_id, score in trip_candidate_scores.items():
                         logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {score}")
+
+                # finally return updated trip scores
+                return trip_candidate_scores
 
         else:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
