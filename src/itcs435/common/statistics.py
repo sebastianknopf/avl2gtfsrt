@@ -27,7 +27,7 @@ def bayesian(prior: dict, likelihood: dict, normalized: bool = False, alpha: flo
 
     # calulate update according to the bayesian rule
     unnormalized_posterior: list = [
-        p * (l ** alpha) for p, l in zip(prior_values, likelihood)
+        p * (l ** alpha) for p, l in zip(prior_values, likelihood_values)
     ]
 
     total_posterior: float = sum(unnormalized_posterior)
@@ -38,4 +38,8 @@ def bayesian(prior: dict, likelihood: dict, normalized: bool = False, alpha: flo
     else:
         posterior: list = [u / total_posterior for u in unnormalized_posterior]
 
-    return posterior
+    posterior_dict: dict = dict()
+    for i, (k, _) in enumerate(prior.items()):
+        posterior_dict[k] = posterior[i]
+
+    return posterior_dict
