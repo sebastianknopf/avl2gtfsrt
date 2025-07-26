@@ -47,15 +47,20 @@ class ObjectStorage:
         # remove also positions if they are older than 5 minutes
         if data is not None and 'gnss_positions' in data:
 
-            data['gnss_positions'] = data['gnss_positions'][-12:]
+            # define variables for cleaning up
+            gnss_max_age_seconds: int = 60
 
-            updated_gnss_positions: list[dict] = []
+            # remove all GNSS positions which are older than 60s
             current_timestamp: int = unixtimestamp()
+            updated_gnss_positions: list[dict] = []
             for gnss_position in data['gnss_positions']:
-                if gnss_position['timestamp'] > current_timestamp - 60:
+                if gnss_position['timestamp'] > current_timestamp - gnss_max_age_seconds:
                     updated_gnss_positions.append(gnss_position)
 
             data['gnss_positions'] = updated_gnss_positions
+
+            # restrict to a maximum of 12 GNSS positions totally
+            data['gnss_positions'] = data['gnss_positions'][-12:]
 
         return data
 
