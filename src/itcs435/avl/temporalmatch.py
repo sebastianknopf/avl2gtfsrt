@@ -78,7 +78,7 @@ class TemporalMatch:
         # or should be ended up already, we can discard the trip candidate
         if spatial_progress_value != 0.0:
             if self.time_based_progress_percentage == 0.0 or self.time_based_progress_percentage == 100.0:
-                logging.info(f"{self.__class__.__name__}: Trip candidate discarded due to time-based progress percentage being {self.time_based_progress_percentage}%.")
+                logging.debug(f"{self.__class__.__name__}: Trip candidate discarded due to time-based progress percentage being {self.time_based_progress_percentage}%.")
 
                 return 0.0
         
@@ -87,7 +87,7 @@ class TemporalMatch:
 
         # if the deviation is too high, we can discard the trip candidate
         if deviation_percentage > self.MAX_DEVIATION_PERCENTAGE:
-            logging.info(f"{self.__class__.__name__}: Trip candidate discarded due to high deviation of {deviation_percentage:.2f}% between time-based progress percentage and spatial progress.")
+            logging.debug(f"{self.__class__.__name__}: Trip candidate discarded due to high deviation of {deviation_percentage:.2f}% between time-based progress percentage and spatial progress.")
 
             return 0.0
 

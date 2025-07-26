@@ -73,6 +73,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # request all possible trip candidates in that case
                     # otherwise use the cached trip candidates
                     if not vehicle.get('is_operationally_logged_on', False):
+                        logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is not operationally logged on. Loading nominal data candidates ...")
+
                         client: NominalDataClient = NominalDataClient(
                             os.getenv('ITCS435_NOMINAL_ADAPTER_TYPE'),
                             json.loads(os.getenv('ITCS435_NOMINAL_ADAPTER_CONFIG'))
@@ -86,4 +88,5 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                         self._object_storage.get_vehicles(),
                         trip_candidates
                     )
+                    
                     matcher.process(vehicle, vehicle_activity['gnss_positions'])

@@ -27,14 +27,13 @@ class AvlMatcher:
                         continue
 
                     # match trip candidate for scoring
-                    match_score: float = 0.0
-                    logging.info(f"{self.__class__.__name__}: Trying to match trip candidate {trip_candidate['serviceJourney']['id']} ...")
+                    # 1. step: spatial matching
+                    # 2. step: temporal matching
 
                     # run spatial matching for trip candidate
                     spatial_match: SpatialMatch = SpatialMatch(trip_candidate['serviceJourney']['pointsOnLink']['points'])
-                    match_score: float = spatial_match.calculate_match_score(activity)
-                    if match_score == 0.0:
-                        logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to spatial matching failure.")
+                    spatial_match_score: float = spatial_match.calculate_match_score(activity)
+                    if spatial_match_score == 0.0:
                         continue
 
                     # run temporal matching for trip candidate
@@ -43,24 +42,18 @@ class AvlMatcher:
                         trip_candidate['serviceJourney']['pointsOnLink']['points']
                     )
 
-                    match_score: float = temporal_match.calculate_match_score(spatial_match.spatial_progress_percentage)
-                    if match_score == 0.0:
-                        logging.info(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} discarded for vehicle {vehicle.get('vehicle_ref')} due to temporal matching failure.")
+                    temporal_match_score: float = temporal_match.calculate_match_score(spatial_match.spatial_progress_percentage)
+                    if temporal_match_score == 0.0:
                         continue
 
                     next_stop_metrics = temporal_match.predict_next_stop_metrics(spatial_match.spatial_progress_percentage)
 
-                    logging.info(f"{self.__class__.__name__}: Trip candidate successfully {trip_candidate['serviceJourney']['id']} matched for vehicle {vehicle.get('vehicle_ref')} with total match score of {match_score}. Next stop index is {next_stop_metrics[0]}, departure delay will be {next_stop_metrics[1]}s.")
-
-                    scored_trip_candidates[trip_candidate['serviceJourney']['id']] = match_score
+                    scored_trip_candidates[trip_candidate['serviceJourney']['id']] = spatial_match_score * temporal_match_score
 
                 # print scored trip candidates
                 if len(scored_trip_candidates) > 0:
                     for trip_id, score in scored_trip_candidates.items():
                         logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {score}")
-
-            else:
-                logging.warning(f"{self.__class__.__name__}: Not enough GNSS positions to match AVL data for vehicle {vehicle.get('vehicle_ref')}. At least two positions are required.")
 
         else:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
