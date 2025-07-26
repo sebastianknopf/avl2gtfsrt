@@ -22,10 +22,17 @@ class AvlMatcher:
                 for trip_candidate in self._trip_candidates:
 
                     # check for prerequisites
+
+                    # check whether trip has a geometry assigned at all
                     if 'pointsOnLink' not in trip_candidate['serviceJourney'] or trip_candidate['serviceJourney']['pointsOnLink'] is None:
                         logging.warning(f"{self.__class__.__name__}: Trip candidate {trip_candidate['serviceJourney']['id']} does not have geometry data. Skipping trip candidate.")
                         continue
 
+                    # check whether another vehicle has logged on this trip
+                    # skip the ressource-consuming matching in that case and skip the candidate
+                    if any(v.get('current_trip_id', None) == trip_candidate['serviceJourney']['id'] for v in self._vehicles):
+                        continue
+                    
                     # match trip candidate for scoring
                     # 1. step: spatial matching
                     # 2. step: temporal matching
