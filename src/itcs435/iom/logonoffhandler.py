@@ -21,6 +21,8 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
                 'is_technically_logged_on': True
             })
 
+            self._object_storage.delete_vehicle_activity(vehicle_ref)
+
             response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
             response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
 
@@ -50,6 +52,8 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
                 vehicle_ref,
                 {'is_technically_logged_on': False}
             )
+
+            self._object_storage.delete_vehicle_activity(vehicle_ref)
 
             response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
             response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()

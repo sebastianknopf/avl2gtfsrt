@@ -41,6 +41,9 @@ class ObjectStorage:
             upsert=True
         )
 
+    def delete_vehicle_activity(self, vehicle_ref: str) -> None:
+        self._db.vehicle_activities.delete_one({'vehicle_ref': vehicle_ref})
+
     def _cleanup_vehicle_activity_gnss(self, data: dict) -> dict:
         
         # reduce last positions to the latest 10 elements
