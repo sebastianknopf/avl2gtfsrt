@@ -16,6 +16,14 @@ log_on_message: str = """<?xml version="1.0" encoding="utf-8"?>
 </TechnicalVehicleLogOnRequestStructure>
 """
 
+log_off_message: str = """<?xml version="1.0" encoding="utf-8"?>
+<TechnicalVehicleLogOffRequestStructure version="1.0" xmlns:netex="http://netex-cen.org">
+	<Timestamp>{timestamp}</Timestamp>
+	<MessageId>{messageId}</MessageId>
+	<netex:VehicleRef version="any">{vehicleRef}</netex:VehicleRef>
+</TechnicalVehicleLogOffRequestStructure>
+"""
+
 gnss_physical_position_message: str = """<?xml version="1.0" encoding="utf-8"?>
 <GnssPhysicalPositionDataStructure version="1.0">
         <Timestamp>{timestamp}</Timestamp>
@@ -197,6 +205,18 @@ if __name__ == "__main__":
 
         # wait for 10s before publishing the next coordinate
         time.sleep(10)
+
+    # publish technical logon message
+    logging.info('Publishing technical logoff message ...')
+    client.publish(
+        'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/TEST/any/ItcsId/1/CorrelationId/1/RequestData',
+        log_off_message.format(
+            timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            messageId=str(uuid.uuid4()),
+            vehicleRef=vehicle_ref
+        ),
+        qos=2
+    )
 
     # Disconnect from the broker
     client.loop_stop()
