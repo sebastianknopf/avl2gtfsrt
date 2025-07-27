@@ -93,9 +93,9 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     trip_candidate_scores: dict = matcher.process(
                         vehicle, 
                         vehicle_activity['gnss_positions'],
-                        vehicle_activity.get('trip_candidate_scores', None)
+                        vehicle_activity.get('trip_candidate_probabilities', None)
                     )
 
                     # save trip candidate scores to vehicle activity
-                    vehicle_activity['trip_candidate_scores'] = trip_candidate_scores
+                    vehicle_activity['trip_candidate_probabilities'] = trip_candidate_scores
                     self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
