@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     for coordinate in coordinates[simulation_line_number]:
         # publish GNSS physical position message
-        logging.info('Publishing GNSS physical position message ...')
+        logging.info(f"Publishing GNSS physical position message ... https://www.google.com/maps?q={coordinate[0]},{coordinate[1]}")
         client.publish(
             'IoM/1.0/DataVersion/2025/Country/de/any/Organisation/TEST/any/Vehicle/{vehicleId}/any/PhysicalPosition/GnssPhysicalPositionData'.format(vehicleId=vehicle_ref),
             gnss_physical_position_message.format(
