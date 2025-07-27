@@ -1,5 +1,6 @@
 import logging
 import os
+import signal
 import sys
 import time
 import uuid
@@ -157,6 +158,7 @@ if __name__ == "__main__":
     simulation_line_number: str = sys.argv[1]
 
     logging.info(f'Starting simulation for vehicle {vehicle_ref} on line {simulation_line_number} ...')
+    logging.info(f'STOP THE SIMULATION ONLY BY USING CTRL+C IN ORDER TO PERFORM CLEANUP LOGIC')
 
     client: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-simulation')
 
@@ -171,7 +173,27 @@ if __name__ == "__main__":
 
     logging.info(f'Connecting to {mqtt_host}:{mqtt_port} ...')
     client.connect(mqtt_host, int(mqtt_port))
-    client.loop_start()    
+    client.loop_start()   
+
+    # define signal handlers
+    def signal_handler(signum, frame):
+        logging.info(f'Reveiced signal {signum}. Terminating ...') 
+
+        logging.info('Publishing technical logoff message ...')
+        client.publish(
+            'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/TEST/any/ItcsId/1/CorrelationId/1/RequestData',
+            log_off_message.format(
+                timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                messageId=str(uuid.uuid4()),
+                vehicleRef=vehicle_ref
+            ),
+            qos=2
+        )
+
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
     # publish technical logon message
     logging.info('Publishing technical logon message ...')
