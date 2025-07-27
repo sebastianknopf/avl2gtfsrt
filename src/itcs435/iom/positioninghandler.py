@@ -25,7 +25,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         # verify that the vehicle is technically logged on
         vehicle: dict = self._object_storage.get_vehicle(vehicle_ref)
         if vehicle is None or not vehicle.get('is_technically_logged_on', False):
-            raise RuntimeError(f"Vehicle {vehicle_ref} is not technically logged on.")
+            logging.error(f"Vehicle {vehicle_ref} is not technically logged on.")
 
         # extract data from the message
         timestamp: int = int(datetime.fromisoformat(msg.timestamp_of_measurement).timestamp())
