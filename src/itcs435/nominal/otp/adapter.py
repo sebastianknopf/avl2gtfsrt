@@ -22,7 +22,7 @@ class OtpAdapter(BaseAdapter):
                 place {
                   ... on StopPlace {
                     id,
-                    estimatedCalls(startTime: $startTime, numberOfDepartures: 15) {
+                    estimatedCalls(startTime: $startTime, numberOfDepartures: 20) {
                       serviceJourney {
                         id,
                         journeyPattern {
@@ -54,7 +54,7 @@ class OtpAdapter(BaseAdapter):
         """
         
         reference_timestamp: datetime = datetime.now(timezone.utc).replace(microsecond=0)
-        reference_timestamp = reference_timestamp - timedelta(minutes=10)
+        reference_timestamp = reference_timestamp - timedelta(minutes=15)
 
         variables: dict = {
           'lat': lat,
