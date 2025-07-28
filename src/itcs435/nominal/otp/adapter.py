@@ -23,6 +23,7 @@ class OtpAdapter(BaseAdapter):
                   ... on StopPlace {
                     id,
                     estimatedCalls(startTime: $startTime, numberOfDepartures: 20) {
+                      date
                       serviceJourney {
                         id,
                         journeyPattern {
