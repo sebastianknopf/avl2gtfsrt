@@ -72,36 +72,40 @@ class TemporalMatch:
 
                 break        
 
-    def calculate_match_score(self, spatial_progress_value: float) -> float:
+    def calculate_match_score(self, spatial_progress_percentage: float) -> float:
         
         # if the vehicle has moved yed but the trip should not be started yet
         # or should be ended up already, we can discard the trip candidate
-        if spatial_progress_value != 0.0:
-            if self.time_based_progress_percentage == 0.0 or self.time_based_progress_percentage == 100.0:
+        if spatial_progress_percentage != 0.0:
+            if self.time_based_progress_percentage == 0.0:
                 logging.debug(f"{self.__class__.__name__}: Trip candidate discarded due to time-based progress percentage being {self.time_based_progress_percentage}%.")
 
                 return 0.0
         
         # calculate the deviation between the time-based progress percentage and the spatial progress value as symmetric deviation
-        deviation_percentage: float = abs(self.time_based_progress_percentage - spatial_progress_value)
+        deviation_percentage: float = self.time_based_progress_percentage - spatial_progress_percentage
 
         # if the deviation is too high, we can discard the trip candidate
-        if deviation_percentage > self.MAX_DEVIATION_PERCENTAGE:
+        if abs(deviation_percentage) > self.MAX_DEVIATION_PERCENTAGE:
             logging.debug(f"{self.__class__.__name__}: Trip candidate discarded due to high deviation of {deviation_percentage:.2f}% between time-based progress percentage and spatial progress.")
 
             return 0.0
 
-        # finally calculate match score
-        self.match_score = 1.0 - deviation_percentage / 100.0
+        # calculate match score
+        # consider early trips with lesser factor
+        if deviation_percentage >= 0.0:
+            self.match_score = (1.0 - abs(deviation_percentage) / 100.0)
+        else:
+            self.match_score = (1.0 - abs(deviation_percentage) / 100.0) * 0.8
 
         return self.match_score
     
-    def predict_next_stop_metrics(self, spatial_progress: float) -> tuple[int]|None:
+    def predict_next_stop_metrics(self, spatial_progress_percentage: float) -> tuple[int]|None:
         
         # find out which will be the next stop based on the current spatial progress
         for i, p in self._stop_projections_on_trip_shape.items():
             stop_percentage: float = p / self._trip_shape.length * 100.0
-            if stop_percentage > spatial_progress:
+            if stop_percentage > spatial_progress_percentage:
                 self.next_stop_index = i
                 break
             
@@ -111,7 +115,7 @@ class TemporalMatch:
             # calculate the relative deviation between the current vehicle progress
             # and the progress of the next nominal stop
             # if the relative deviation is more than 50%, calculate a deviation
-            spatial_deviation_percent: float = (self.time_based_progress_percentage - spatial_progress) / self.time_based_progress_percentage * 100.0 if self.time_based_progress_percentage != 0.0 else 0.0
+            spatial_deviation_percent: float = (self.time_based_progress_percentage - spatial_progress_percentage) / self.time_based_progress_percentage * 100.0 if self.time_based_progress_percentage != 0.0 else 0.0
             if abs(spatial_deviation_percent) > 5.0:
 
                 # calculate time difference between current time and nominal time
