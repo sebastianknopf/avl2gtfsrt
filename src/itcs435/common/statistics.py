@@ -10,7 +10,7 @@ def softmax(scores: list):
 
     return [e / sum_exp for e in exp_scores]
 
-def bayesian_update(prior_vectors: dict, likelihood: dict, normalized: bool = False, alpha: float = 1.0) -> dict:
+def bayesian_update(prior_vectors: dict, likelihood: dict, normalized: bool = False, alpha: float = 1.0) -> tuple[bool, dict]:
     
     # normalize all values for likelihood using softmax activation
     if not normalized:
@@ -54,4 +54,19 @@ def bayesian_update(prior_vectors: dict, likelihood: dict, normalized: bool = Fa
     for i, (k, _) in enumerate(prior_vectors.items()):
         posterior_vectors[k].append(posterior[i])
 
-    return posterior_vectors
+    # check best candidate for convergence
+    convergence: bool = False
+
+    convergence_key: str = max(posterior_vectors, key=lambda k: posterior_vectors[k][-1])
+    convergence_vector: list[float] = posterior_vectors[convergence_key]
+    convergence_test: float = convergence_vector[-1]
+
+    if convergence_test > 0.98:
+        convergence = True
+    elif convergence_test > 0.50:
+        convergence_vector = convergence_vector[-3:]
+
+        deltas: list[float] = [abs(b - a) for a, b in zip(convergence_vector, convergence_vector[1:])]
+        convergence = all(delta < 0.02 for delta in deltas)
+
+    return (convergence, posterior_vectors)
