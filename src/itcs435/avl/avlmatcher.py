@@ -77,14 +77,14 @@ class AvlMatcher:
                     )
                 else:
                     trip_candidate_probabilities: dict = bayesian_update(
-                        trip_candidate_scores,
+                        {k: [v] for k, v in trip_candidate_scores.items()},
                         trip_candidate_scores
                     )
 
                 # print scored trip candidates
                 if len(trip_candidate_probabilities) > 0:
-                    for trip_id, score in trip_candidate_probabilities.items():
-                        logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {score}")
+                    for trip_id, probability_vector in trip_candidate_probabilities.items():
+                        logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {probability_vector[-1]}")
 
                 # finally return updated trip scores
                 return trip_candidate_probabilities

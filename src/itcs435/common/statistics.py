@@ -10,7 +10,7 @@ def softmax(scores: list):
 
     return [e / sum_exp for e in exp_scores]
 
-def bayesian_update(prior: dict, likelihood: dict, normalized: bool = False, alpha: float = 1.0) -> dict:
+def bayesian_update(prior_vectors: dict, likelihood: dict, normalized: bool = False, alpha: float = 1.0) -> dict:
     
     # normalize all values for likelihood using softmax activation
     if not normalized:
@@ -23,23 +23,23 @@ def bayesian_update(prior: dict, likelihood: dict, normalized: bool = False, alp
     # remove keys from prior if the are not considered as 
     # trip candidates in the current update anymore
     # also add new candidates to prior if they are in likelihood
-    prior = {k: v for k, v in prior.items() if k in likelihood}
+    prior_vectors = {k: v for k, v in prior_vectors.items() if k in likelihood}
 
     for k, v in likelihood.items():
-        if k not in prior:
-            prior[k] = v
+        if k not in prior_vectors:
+            prior_vectors[k] = [v]
 
     # ensure that prior and likelihood are sorted both by their key 
-    prior = dict(sorted(prior.items()))
+    prior_vectors = dict(sorted(prior_vectors.items()))
     likelihood = dict(sorted(likelihood.items()))
 
     # extract all values
     likelihood_values: list = list(likelihood.values())
-    prior_values: list = list(prior.values())
+    prior_vectors_values: list = list(prior_vectors.values())
 
     # calulate update according to the bayesian rule
     unnormalized_posterior: list = [
-        p * (l ** alpha) for p, l in zip(prior_values, likelihood_values)
+        p[-1] * (l ** alpha) for p, l in zip(prior_vectors_values, likelihood_values)
     ]
 
     total_posterior: float = sum(unnormalized_posterior)
@@ -50,8 +50,8 @@ def bayesian_update(prior: dict, likelihood: dict, normalized: bool = False, alp
     else:
         posterior: list = [u / total_posterior for u in unnormalized_posterior]
 
-    posterior_dict: dict = dict()
-    for i, (k, _) in enumerate(prior.items()):
-        posterior_dict[k] = posterior[i]
+    posterior_vectors: dict = prior_vectors
+    for i, (k, _) in enumerate(prior_vectors.items()):
+        posterior_vectors[k].append(posterior[i])
 
-    return posterior_dict
+    return posterior_vectors
