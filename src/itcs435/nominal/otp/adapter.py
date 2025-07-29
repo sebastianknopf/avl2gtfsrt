@@ -65,7 +65,7 @@ class OtpAdapter(BaseAdapter):
         
         data: dict = self._request(query, variables)
 
-        if 'data' in data and 'nearest' in data['data'] and len(data['data']['nearest'].get('edges', [])) > 0:
+        if data is not None and 'data' in data and 'nearest' in data['data'] and len(data['data']['nearest'].get('edges', [])) > 0:
             return data['data']['nearest'].get('edges', [])[0].get('node', {}).get('place', {}).get('estimatedCalls', [])
         else: 
             return []
