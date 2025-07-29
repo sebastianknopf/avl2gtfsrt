@@ -9,8 +9,8 @@ from itcs435.avl.spatialvector import SpatialVectorCollection
 
 class SpatialMatch:
 
-    TRIP_SHAPE_BUFFER_SIZE: float = 15.0
-    TRIP_SHAPE_MATCHING_RATIO: float = 0.80
+    TRIP_SHAPE_BUFFER_SIZE: float = 30.0
+    TRIP_SHAPE_MATCHING_RATIO: float = 0.60
     TRIP_SHAPE_FORWARD_MOVEMENT_RATIO: float = 0.75
 
     def __init__(self, trip_shape_polyline: str) -> None:
