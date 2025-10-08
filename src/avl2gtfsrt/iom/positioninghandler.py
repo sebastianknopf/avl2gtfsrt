@@ -7,7 +7,6 @@ from typing import cast
 
 from avl2gtfsrt.avl.avlmatcher import AvlMatcher
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
-from avl2gtfsrt.common.env import is_set
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.shared import unixtimestamp
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
@@ -94,9 +93,11 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     vehicle_activity.get('trip_candidate_probabilities', None)
                 )
 
-                trip_candidate_found: bool = result[0]
+                trip_candidate_convergence: bool = result[0]
                 trip_candidate_probabilities: dict = result[1]
 
                 # save trip candidate scores to vehicle activity
+                vehicle_activity['trip_candidate_convergence'] = trip_candidate_convergence
                 vehicle_activity['trip_candidate_probabilities'] = trip_candidate_probabilities
+
                 self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)

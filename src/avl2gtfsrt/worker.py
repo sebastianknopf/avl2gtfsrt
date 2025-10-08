@@ -10,7 +10,7 @@ from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.iom.processor import IomProcessor
 from avl2gtfsrt.objectstorage import ObjectStorage
 
-class AvlWorker:
+class Worker:
 
     def __init__(self) -> None:
         

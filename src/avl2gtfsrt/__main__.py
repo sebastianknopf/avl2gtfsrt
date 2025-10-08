@@ -3,12 +3,12 @@ import click
 import logging
 
 from avl2gtfsrt.common.env import is_debug
-from avl2gtfsrt.worker import AvlWorker
+from avl2gtfsrt.worker import Worker
 
 def run():
     
     try:
-        worker: AvlWorker = AvlWorker()
+        worker: Worker = Worker()
         worker.run()
     except Exception as ex:
         if is_debug():

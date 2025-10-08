@@ -78,7 +78,7 @@ class AvlMatcher:
                         trip_candidate_scores
                     )
 
-                    trip_candidate_found: bool = bayesian_result[0]
+                    trip_candidate_convergence: bool = bayesian_result[0]
                     trip_candidate_probabilities: dict = bayesian_result[1]
                 else:
                     bayesian_result: tuple[bool, dict] = bayesian_update(
@@ -86,16 +86,16 @@ class AvlMatcher:
                         trip_candidate_scores
                     )
 
-                    trip_candidate_found: bool = bayesian_result[0]
+                    trip_candidate_convergence: bool = bayesian_result[0]
                     trip_candidate_probabilities: dict = bayesian_result[1]
 
                 # print scored trip candidates
                 if len(trip_candidate_probabilities) > 0:
                     for trip_id, probability_vector in trip_candidate_probabilities.items():
-                        logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {probability_vector[-1]}, [Convergence] {trip_candidate_found}")
+                        logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {probability_vector[-1]}, [Convergence] {trip_candidate_convergence}")
 
                 # finally return updated trip scores
-                return (trip_candidate_found, trip_candidate_probabilities)
+                return (trip_candidate_convergence, trip_candidate_probabilities)
 
         else:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
