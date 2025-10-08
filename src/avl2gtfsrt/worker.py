@@ -23,7 +23,7 @@ class AvlWorker:
         
         # connect to local MongoDB
         mongodb_username: str = os.getenv('A2G_MONGODB_USERNAME', '')
-        mongodb_password: str = os.getenv('A2G_MONGODB_USERNAME', '')
+        mongodb_password: str = os.getenv('A2G_MONGODB_PASSWORD', '')
 
         logging.info(f"{self.__class__.__name__}: Connecting to MongoDB ...")
         self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
@@ -33,8 +33,7 @@ class AvlWorker:
             organisation_id=self._organisation_id,
             itcs_id=self._itcs_id,
             mqtt_client=self._mqtt,
-            storage=self._object_storage,
-            siri_publisher=self._publisher
+            storage=self._object_storage
         )
 
         self._should_run = threading.Event()

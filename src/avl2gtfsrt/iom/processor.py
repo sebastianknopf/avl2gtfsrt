@@ -13,7 +13,6 @@ from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
 from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOffHandler
 from avl2gtfsrt.iom.positioninghandler import GnssPhysicalPositionHandler
 from avl2gtfsrt.objectstorage import ObjectStorage
-from avl2gtfsrt.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
     def __missing__(self, key):
@@ -21,18 +20,16 @@ class TopicLevelStructureDict(dict):
     
 class IomProcessor:
 
-    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: ObjectStorage, siri_publisher: Publisher) -> None:
+    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: ObjectStorage) -> None:
         self._organisation_id = organisation_id
         self._itcs_id = itcs_id
         self._mqtt_client = mqtt_client
         self._storage = storage
-        self._siri_publisher = siri_publisher
 
         # create TLS topic structures
         self._tls_sub_itcs_inbox = ("IoM/1.0/DataVersion/+/Inbox/ItcsInbox/Country/de/+/Organisation/{organisation_id}/+/ItcsId/{itcs_id}/#", 2)
         self._tls_pub_vehicle_inbox = ("IoM/1.0/DataVersion/{data_version}/Inbox/VehicleInbox/Country/de/any/Organisation/{organisation_id}/any/VehicleId/{vehicle_id}/CorrelationId/{correlation_id}/ResponseData", 2)
         self._tls_sub_vehicle_physical_position = ("IoM/1.0/DataVersion/+/Country/de/+/Organisation/{organisation_id}/+/Vehicle/+/+/PhysicalPosition/#", 0)
-        self._tls_sub_vehicle_logical_position = ("IoM/1.0/DataVersion/+/Country/de/+/Organisation/{organisation_id}/+/Vehicle/+/+/LogicalPositionData", 0)
 
         # keep track of all global placeholders here
         # used in _get_tls method later
@@ -43,8 +40,7 @@ class IomProcessor:
     def get_subscribed_topics(self) -> tuple[str, int]:
         subscribed_topics: list = [
             self._get_tls('sub_itcs_inbox'),
-            self._get_tls('sub_vehicle_physical_position'),
-            self._get_tls('sub_vehicle_logical_position')
+            self._get_tls('sub_vehicle_physical_position')
         ]
         
         return subscribed_topics
