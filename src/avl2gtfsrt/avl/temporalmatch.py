@@ -4,7 +4,7 @@ import polyline
 from datetime import datetime, timezone
 from shapely.geometry import LineString, Point
 
-from itcs435.common.shared import unixtimestamp, web_mercator, clamp
+from avl2gtfsrt.common.shared import unixtimestamp, web_mercator, clamp
 
 class TemporalMatch:
 

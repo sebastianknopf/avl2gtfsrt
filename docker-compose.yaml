@@ -2,12 +2,12 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongodb
-    restart: always
+    restart: unless-stopped
     expose:
       - "27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${ITCS435_MONGODB_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${ITCS435_MONGODB_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${A2G_MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${A2G_MONGODB_PASSWORD}
     healthcheck:
       test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
@@ -20,28 +20,19 @@ services:
       dockerfile: ./Dockerfile
     container_name: worker
     restart: unless-stopped
-    ports:
-      - "${ITCS435_PUBLISHER_ENDPOINT_PORT}:${ITCS435_PUBLISHER_ENDPOINT_PORT}"
     environment:
-      - ITCS435_DEBUG
-      - ITCS435_MONGODB_USERNAME
-      - ITCS435_MONGODB_PASSWORD
-      - ITCS435_WORKER_MQTT_HOST
-      - ITCS435_WORKER_MQTT_PORT
-      - ITCS435_WORKER_MQTT_USERNAME
-      - ITCS435_WORKER_MQTT_PASSWORD
-      - ITCS435_NOMINAL_ADAPTER_TYPE
-      - ITCS435_NOMINAL_ADAPTER_CONFIG
-      - ITCS435_NOMINAL_CACHING_ENABLED
-      - ITCS435_AVL_PROCESSING_ENABLED
-      - ITCS435_PUBLISHER_PARTICIPANT_REF
-      - ITCS435_PUBLISHER_PARTICIPANT_CONFIG_FILENAME
-      - ITCS435_PUBLISHER_ENDPOINT_PORT
-      - ITCS435_PUBLISHER_DATALOG_DIRECTORY
-      - ITCS435_ITCS_INBOX_TLS
-      - ITCS435_VEHICLE_INBOX_TLS
-      - ITCS435_VEHICLE_PHYSICAL_POSITION_TLS
-      - ITCS435_VEHICLE_LOGICAL_POSITION_TLS
+      - A2G_DEBUG
+      - A2G_ORGANISATION_ID
+      - A2G_ITCS_ID
+      - A2G_MONGODB_USERNAME
+      - A2G_MONGODB_USERNAME
+      - A2G_WORKER_MQTT_HOST
+      - A2G_WORKER_MQTT_PORT
+      - A2G_WORKER_MQTT_USERNAME
+      - A2G_WORKER_MQTT_PASSWORD
+      - A2G_NOMINAL_ADAPTER_TYPE
+      - A2G_NOMINAL_ADAPTER_CONFIG
+      - A2G_NOMINAL_CACHING_ENABLED
     depends_on:
       "mongodb":
         condition: service_healthy

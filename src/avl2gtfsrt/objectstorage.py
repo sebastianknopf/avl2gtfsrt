@@ -1,9 +1,9 @@
 from pymongo import MongoClient
 
-from itcs435.common.shared import unixtimestamp
+from avl2gtfsrt.common.shared import unixtimestamp
 
 class ObjectStorage:
-    def __init__(self, username: str, password: str, db_name: str = 'itcs435'):
+    def __init__(self, username: str, password: str, db_name: str = 'avl2gtfsrt'):
         self._mdb = MongoClient(f"mongodb://{username}:{password}@mongodb:27017/?authSource=admin")
 
         self._db = self._mdb[db_name]

@@ -1,7 +1,7 @@
 from pydantic import Field
 
-from itcs435.common.shared import isotimestamp, uid
-from itcs435.common.serialization import Serializable
+from avl2gtfsrt.common.shared import isotimestamp, uid
+from avl2gtfsrt.common.serialization import Serializable
 
 
 """ Basic Types """

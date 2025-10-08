@@ -3,8 +3,8 @@ import polyline
 
 from shapely.geometry import LineString, Polygon, Point
 
-from itcs435.common.shared import clamp, web_mercator
-from itcs435.avl.spatialvector import SpatialVectorCollection
+from avl2gtfsrt.common.shared import clamp, web_mercator
+from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
 
 
 class SpatialMatch:

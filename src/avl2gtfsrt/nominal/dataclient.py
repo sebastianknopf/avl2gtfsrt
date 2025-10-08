@@ -1,7 +1,7 @@
 import logging
 
-from itcs435.common.env import is_set
-from itcs435.nominal.baseadapter import BaseAdapter
+from avl2gtfsrt.common.env import is_debug
+from avl2gtfsrt.nominal.baseadapter import BaseAdapter
 
 
 class NominalDataClient:
@@ -20,7 +20,7 @@ class NominalDataClient:
             return result
         
         except Exception as ex:
-            if is_set('ITCS435_DEBUG'):
+            if is_debug():
                 logging.exception(ex)
             else:
                 logging.error(str(ex))
@@ -29,7 +29,7 @@ class NominalDataClient:
         adapter: BaseAdapter = None
         
         if self._adapter_type == 'otp':
-            from itcs435.nominal.otp.adapter import OtpAdapter
+            from avl2gtfsrt.nominal.otp.adapter import OtpAdapter
             adapter = OtpAdapter(self._adapter_config.get('endpoint', None))
         else:
             raise ValueError(f"Unknown nominal adapter type {self._adapter_type}!")

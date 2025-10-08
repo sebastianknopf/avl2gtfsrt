@@ -207,6 +207,6 @@ pip-selfcheck.json
 # Project Specific
 dev.env
 
-src/itcs435/common/version.py
+src/avl2gtfsrt/common/version.py
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,venv

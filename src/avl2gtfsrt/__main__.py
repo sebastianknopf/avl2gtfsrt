@@ -2,13 +2,13 @@ import os
 import click
 import logging
 
-from itcs435.common.env import is_debug
-from itcs435.worker import IomWorker
+from avl2gtfsrt.common.env import is_debug
+from avl2gtfsrt.worker import AvlWorker
 
 def run():
     
     try:
-        worker: IomWorker = IomWorker()
+        worker: AvlWorker = AvlWorker()
         worker.run()
     except Exception as ex:
         if is_debug():

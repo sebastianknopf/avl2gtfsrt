@@ -2,12 +2,12 @@ import logging
 
 from typing import cast
 
-from itcs435.vdv.vdv435 import AbstractBasicStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
-from itcs435.iom.basehandler import AbstractRequestResponseHandler
+from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure, TechnicalVehicleLogOnResponseStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, TechnicalVehicleLogOnResponseErrorStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
+from avl2gtfsrt.iom.basehandler import AbstractRequestResponseHandler
 
 class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
     def handle_request(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:

@@ -29,7 +29,7 @@ gnss_physical_position_message: str = """<?xml version="1.0" encoding="utf-8"?>
 <GnssPhysicalPositionDataStructure version="1.0">
         <Timestamp>{timestamp}</Timestamp>
         <TimestampOfMeasurement>{timestampOfMeasurement}</TimestampOfMeasurement>
-        <PublisherId>ITCS435-SIMULATION</PublisherId>
+        <PublisherId>A2G-SIMULATION</PublisherId>
         <GnssPhysicalPosition>
                 <WGS84PhysicalPosition>
                         <Latitude>{latitude}</Latitude>
@@ -194,16 +194,16 @@ if __name__ == "__main__":
     logging.info(f'Starting simulation for vehicle {vehicle_ref} on line {simulation_line_number} ...')
     logging.info(f'STOP THE SIMULATION ONLY BY USING CTRL+C IN ORDER TO PERFORM CLEANUP LOGIC')
 
-    client: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-simulation')
+    client: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-simulation')
 
-    mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
-    mqtt_password: str = os.getenv('ITCS435_WORKER_MQTT_PASSWORD', None)
+    mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)
+    mqtt_password: str = os.getenv('A2G_WORKER_MQTT_PASSWORD', None)
     if mqtt_username is not None and mqtt_password is not None:
         client.username_pw_set(username=mqtt_username, password=mqtt_password)
 
     # connect to MQTT broker
-    mqtt_host: str = os.getenv('ITCS435_WORKER_MQTT_HOST', 'test.mosquitto.org')
-    mqtt_port: str = os.getenv('ITCS435_WORKER_MQTT_PORT', '1883')
+    mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', 'test.mosquitto.org')
+    mqtt_port: str = os.getenv('A2G_WORKER_MQTT_PORT', '1883')
 
     logging.info(f'Connecting to {mqtt_host}:{mqtt_port} ...')
     client.connect(mqtt_host, int(mqtt_port))

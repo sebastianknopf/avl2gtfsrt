@@ -3,8 +3,8 @@ import requests
 
 from datetime import datetime, timezone, timedelta
 
-from itcs435.common.env import is_debug
-from itcs435.nominal.baseadapter import BaseAdapter
+from avl2gtfsrt.common.env import is_debug
+from avl2gtfsrt.nominal.baseadapter import BaseAdapter
 
 
 class OtpAdapter(BaseAdapter):

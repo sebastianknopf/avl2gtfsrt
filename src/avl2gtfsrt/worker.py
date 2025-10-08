@@ -6,31 +6,24 @@ import time
 
 from paho.mqtt import client as mqtt
 
-from itcs435.common.env import is_debug
-from itcs435.iom.processor import IomProcessor
-from itcs435.objectstorage import ObjectStorage
-from itcs435.siri.publisher import Publisher
+from avl2gtfsrt.common.env import is_debug
+from avl2gtfsrt.iom.processor import IomProcessor
+from avl2gtfsrt.objectstorage import ObjectStorage
 
-class IomWorker:
+class AvlWorker:
 
     def __init__(self) -> None:
         
-        self._organisation_id: str = os.getenv('ITCS435_ORGANISATION_ID', 'TEST')
-        self._itcs_id: str = os.getenv('ITCS435_ITCS_ID', '1')
+        self._organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
+        self._itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
-        self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='itcs435-worker')
+        self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-worker')
         self._mqtt.on_connect = self._on_connect
         self._mqtt.on_message = self._on_message
-
-        self._publisher = Publisher(
-            os.getenv('ITCS435_PUBLISHER_PARTICIPANT_REF', 'PY_TEST_PUBLISHER'),
-            os.getenv('ITCS435_PUBLISHER_PARTICIPANT_CONFIG_FILENAME', './config/participants.yaml'),
-            datalog_directory=os.getenv('ITCS435_PUBLISHER_DATALOG_DIRECTORY', 'datalog')
-        )
         
         # connect to local MongoDB
-        mongodb_username: str = os.getenv('ITCS435_MONGODB_USERNAME', '')
-        mongodb_password: str = os.getenv('ITCS435_MONGODB_PASSWORD', '')
+        mongodb_username: str = os.getenv('A2G_MONGODB_USERNAME', '')
+        mongodb_password: str = os.getenv('A2G_MONGODB_USERNAME', '')
 
         logging.info(f"{self.__class__.__name__}: Connecting to MongoDB ...")
         self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
@@ -81,22 +74,18 @@ class IomWorker:
         #time.sleep(5)
 
         # set username and password if provided
-        mqtt_username: str = os.getenv('ITCS435_WORKER_MQTT_USERNAME', None)
-        mqtt_password: str = os.getenv('ITCS435_WORKER_MQTT_PASSWORD', None)
+        mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)
+        mqtt_password: str = os.getenv('A2G_WORKER_MQTT_PASSWORD', None)
         if mqtt_username is not None and mqtt_password is not None:
             self._mqtt.username_pw_set(username=mqtt_username, password=mqtt_password)
 
         # connect to MQTT broker
-        mqtt_host: str = os.getenv('ITCS435_WORKER_MQTT_HOST', 'test.mosquitto.org')
-        mqtt_port: str = os.getenv('ITCS435_WORKER_MQTT_PORT', '1883')
+        mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', 'test.mosquitto.org')
+        mqtt_port: str = os.getenv('A2G_WORKER_MQTT_PORT', '1883')
 
         logging.info(f"{self.__class__.__name__}: Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
         self._mqtt.connect(mqtt_host, int(mqtt_port))
         self._mqtt.loop_start()
-
-        # start publisher server
-        logging.info(f"{self.__class__.__name__}: Starting SIRI publisher ...")
-        # self._publisher.start()
 
         logging.info(f"{self.__class__.__name__}: Worker startup complete.")
 
@@ -111,9 +100,6 @@ class IomWorker:
             logging.info(f"{self.__class__.__name__}: Shutting down MQTT connection...")
             self._mqtt.loop_stop()
             self._mqtt.disconnect()
-
-            logging.info(f"{self.__class__.__name__}: Shutting down SIRI publisher ...")
-            #self._publisher.stop()
 
             logging.info(f"{self.__class__.__name__}: Closing MongoDB connection ...")
             self._object_storage.close()

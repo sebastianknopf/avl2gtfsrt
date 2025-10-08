@@ -3,17 +3,17 @@ import re
 
 from paho.mqtt import client as mqtt
 
-from itcs435.common.mqtt import get_tls_value
-from itcs435.common.serialization import Serializable
-from itcs435.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure, AbstractDataPublicationStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
-from itcs435.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
-from itcs435.vdv.vdv435 import GnssPhysicalPositionDataStructure
-from itcs435.iom.logonoffhandler import TechnicalVehicleLogOnHandler
-from itcs435.iom.logonoffhandler import TechnicalVehicleLogOffHandler
-from itcs435.iom.positioninghandler import GnssPhysicalPositionHandler
-from itcs435.objectstorage import ObjectStorage
-from itcs435.siri.publisher import Publisher
+from avl2gtfsrt.common.mqtt import get_tls_value
+from avl2gtfsrt.common.serialization import Serializable
+from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure, AbstractDataPublicationStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
+from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
+from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
+from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
+from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOffHandler
+from avl2gtfsrt.iom.positioninghandler import GnssPhysicalPositionHandler
+from avl2gtfsrt.objectstorage import ObjectStorage
+from avl2gtfsrt.siri.publisher import Publisher
 
 class TopicLevelStructureDict(dict):
     def __missing__(self, key):

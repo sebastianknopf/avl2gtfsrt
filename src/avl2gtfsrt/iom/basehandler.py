@@ -1,7 +1,7 @@
 from abc import ABC
 
-from itcs435.objectstorage import ObjectStorage
-from itcs435.vdv.vdv435 import AbstractBasicStructure
+from avl2gtfsrt.objectstorage import ObjectStorage
+from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 
 class AbstractHandler(ABC):
 

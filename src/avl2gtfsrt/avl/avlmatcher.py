@@ -1,9 +1,9 @@
 import logging
 
-from itcs435.avl.spatialmatch import SpatialMatch
-from itcs435.avl.temporalmatch import TemporalMatch
-from itcs435.avl.spatialvector import SpatialVectorCollection
-from itcs435.common.statistics import bayesian_update
+from avl2gtfsrt.avl.spatialmatch import SpatialMatch
+from avl2gtfsrt.avl.temporalmatch import TemporalMatch
+from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
+from avl2gtfsrt.common.statistics import bayesian_update
 
 class AvlMatcher:
 

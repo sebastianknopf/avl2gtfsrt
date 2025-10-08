@@ -3,8 +3,8 @@ requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "itcs435"
-description = "itcs435 - reference implementation for an Intermodal Transportation Control System based on VDV435"
+name = "avl2gtfsrt"
+description = "Processor to match AVL data to GTFS data and provide a GTFS-RT feed with tripUpdates and vehiclePositions"
 authors = [{ name = "Sebastian Knopf", email = "mail@sebastian-knopf.de" }]
 readme = "README.md"
 license = {text = "Apache License (2.0)"}
@@ -28,4 +28,4 @@ requires-python = ">=3.10"
 dynamic = ["version"]
 
 [tool.setuptools_scm]
-write_to = "src/itcs435/common/version.py"
+write_to = "src/avl2gtfsrt/common/version.py"
