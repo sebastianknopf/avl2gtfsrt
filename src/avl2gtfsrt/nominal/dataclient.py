@@ -30,7 +30,11 @@ class NominalDataClient:
         
         if self._adapter_type == 'otp':
             from avl2gtfsrt.nominal.otp.adapter import OtpAdapter
-            adapter = OtpAdapter(self._adapter_config.get('endpoint', None))
+            adapter = OtpAdapter(
+                self._adapter_config.get('endpoint', None),
+                self._adapter_config.get('username', None),
+                self._adapter_config.get('password', None)
+            )
         else:
             raise ValueError(f"Unknown nominal adapter type {self._adapter_type}!")
         

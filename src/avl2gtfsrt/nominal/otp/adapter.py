@@ -9,8 +9,10 @@ from avl2gtfsrt.nominal.baseadapter import BaseAdapter
 
 class OtpAdapter(BaseAdapter):
 
-    def __init__(self, endpoint: str):
+    def __init__(self, endpoint: str, username: str|None = None, password: str|None = None):
         self._endpoint = endpoint
+        self._username = username
+        self._password = password
         
     def get_trip_candidates(self, lat: float, lon: float) -> list[dict]:
         query = """
@@ -72,6 +74,11 @@ class OtpAdapter(BaseAdapter):
         
     def _request(self, query: str, variables: dict) -> dict:
         try:
+            
+            authentication: tuple|None = None
+            if self._username is not None and self._password is not None:
+                authentication = (self._username, self._password)
+            
             response = requests.post(
                 self._endpoint,
                 json={
@@ -80,7 +87,8 @@ class OtpAdapter(BaseAdapter):
                 },
                 headers={
                     'Content-Type': 'application/json'
-                }
+                },
+                auth=authentication
             )
             
             response.raise_for_status()
