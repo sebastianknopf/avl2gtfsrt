@@ -109,7 +109,10 @@ class IomProcessor:
         # handle message
         if isinstance(msg, GnssPhysicalPositionDataStructure):
             handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
-            handler.handle(topic, msg)
+            result: dict = handler.handle(topic, msg)
+
+            if result['handler_success'] and result['handler_result'] is not None and result['handler_result']['triP_convergence']:
+                logging.info('Logging vehicle on onto a trip.....!')
 
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
