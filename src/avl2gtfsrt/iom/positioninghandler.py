@@ -16,7 +16,7 @@ from avl2gtfsrt.nominal.dataclient import NominalDataClient
 
 class GnssPhysicalPositionHandler(AbstractHandler):
 
-    def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
+    def handle(self, topic: str, msg: AbstractBasicStructure) -> dict|None:
         msg = cast(GnssPhysicalPositionDataStructure, msg)
 
         vehicle_ref: str = get_tls_value(topic, 'Vehicle')
@@ -65,7 +65,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
             # matching is only possible if the vehicle is moving
             # remember: we need at sequence of movement coordinates to match the trip!
-            if activity.is_movement():
+            if activity.is_movement() and not vehicle.get('is_operationally_logged_on', False):
 
                 # check if the vehicle is not operationally logged on
                 # request all possible trip candidates in that case
@@ -101,3 +101,20 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                 vehicle_activity['trip_candidate_probabilities'] = trip_candidate_probabilities
 
                 self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+
+                # return result
+                # (bool, (bool, object)) <--- (Success/Failure of the Handler, (TripConvergence, TripObject))
+                if trip_candidate_convergence:
+                    trip_candidate_id: str = max(trip_candidate_probabilities, key=trip_candidate_probabilities.get)
+                    trip_candidate: dict|None = next((t for t in trip_candidates if t['serviceJourney']['id'] == trip_candidate_id), None)
+                else:
+                    trip_candidate: dict|None = None
+                
+                return {
+                    'handler_success': True,
+                    'handler_result': {
+                        'trip_convergence': trip_candidate_convergence,
+                        'trip_candidate': trip_candidate
+                    }
+
+                }
