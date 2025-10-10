@@ -4,7 +4,7 @@
         {
             "label": "avl2gtfsrt-dev",
             "type": "shell",
-            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env up -d --build worker",
+            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env up -d --build",
             "group": "build",
             "problemMatcher": [],
             "isBackground": true
