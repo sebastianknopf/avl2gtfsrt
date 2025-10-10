@@ -116,5 +116,9 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                         'trip_convergence': trip_candidate_convergence,
                         'trip_candidate': trip_candidate
                     }
-
                 }
+
+        return {
+            'handler_success': True,
+            'handler_result': None
+        }
