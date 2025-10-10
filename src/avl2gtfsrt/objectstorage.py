@@ -52,7 +52,7 @@ class ObjectStorage:
         return trip
     
     def update_trip(self, trip_id: str, data: dict) -> None:
-        self._db.vehicles.update_one(
+        self._db.trips.update_one(
             {'trip_id': trip_id},
             {'$set': data},
             upsert=True
