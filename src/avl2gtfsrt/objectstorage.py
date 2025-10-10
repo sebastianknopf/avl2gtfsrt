@@ -23,8 +23,8 @@ class ObjectStorage:
         )
 
     def get_vehicle_position(self, vehicle_ref: str) -> dict|None:
-        vehicle_position = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-        return vehicle_position['gnss_positions'][-1] if len(vehicle_position['gnss_positions']) > 0 else None
+        vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+        return vehicle_activity['gnss_positions'][-1] if vehicle_activity is not None and len(vehicle_activity['gnss_positions']) > 0 else None
 
     def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
