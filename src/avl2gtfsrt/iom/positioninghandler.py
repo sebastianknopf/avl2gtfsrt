@@ -65,7 +65,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
             # matching is only possible if the vehicle is moving
             # remember: we need at sequence of movement coordinates to match the trip!
-            if activity.is_movement() and not vehicle.get('is_operationally_logged_on', False):
+            if activity.is_movement():
 
                 # check if the vehicle is not operationally logged on
                 # request all possible trip candidates in that case
