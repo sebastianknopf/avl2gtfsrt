@@ -1,11 +1,10 @@
-import os
 import click
 import logging
 
 from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.worker import Worker
 
-def run():
+def run_worker():
     
     try:
         worker: Worker = Worker()
@@ -16,18 +15,31 @@ def run():
         else:
             logging.error(str(ex)) 
 
+def run_server():
+    logging.info('Running GTFS-RT server ...')
+
 @click.group()
 def cli():
     pass
 
 @cli.command()
-def main():
+def worker():
+
+    # set logging default configuration
+    logging.basicConfig(format="[%(levelname)s] %(asctime)s %(message)s", level=logging.INFO)
+
+    # run the worker
+    run_worker()
+
+@cli.command()
+def server():
 
     # set logging default configuration
     logging.basicConfig(format="[%(levelname)s] %(asctime)s %(message)s", level=logging.INFO)
 
     # run the server
-    run()
+    run_server()
+
 
 if __name__ == '__main__':
     cli()

@@ -3,6 +3,17 @@ services:
     environment:
       - PYTHONPATH=src
     entrypoint: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m avl2gtfsrt main
+      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m avl2gtfsrt
+    command: >
+      worker
     ports:
       - "5678:5678"
+  server:
+    environment:
+      - PYTHONPATH=src
+    entrypoint: >
+      python -m debugpy --listen 0.0.0.0:5679 --wait-for-client -m avl2gtfsrt
+    command: >
+      server
+    ports:
+      - "5679:5679"

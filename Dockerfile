@@ -15,5 +15,3 @@ COPY src/ /app/src
 RUN pip install --no-deps .
 
 STOPSIGNAL SIGTERM
-
-ENTRYPOINT ["python", "-m", "avl2gtfsrt", "main"]
