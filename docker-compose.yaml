@@ -50,6 +50,7 @@ services:
       - A2G_DEBUG
       - A2G_MONGODB_USERNAME
       - A2G_MONGODB_PASSWORD
+      - A2G_SERVER_TIMEZONE
     depends_on:
       "mongodb":
         condition: service_healthy
