@@ -50,7 +50,10 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
         if vehicle is not None and vehicle.get('is_technically_logged_on', False):
             self._object_storage.update_vehicle(
                 vehicle_ref,
-                {'is_technically_logged_on': False}
+                {
+                    'is_technically_logged_on': False,
+                    'is_operationally_logged_on': False
+                }
             )
 
             self._object_storage.delete_vehicle_activity(vehicle_ref)
