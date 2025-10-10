@@ -8,14 +8,14 @@ class ObjectStorage:
 
         self._db = self._mdb[db_name]
 
-    def get_vehicles(self) -> dict:
+    def get_vehicles(self) -> list:
         return list(self._db.vehicles.find({}))
     
     def get_vehicle(self, vehicle_ref: str) -> dict|None:
-        vehicle = self._db.vehicles.find_one({"vehicle_ref": vehicle_ref})
+        vehicle = self._db.vehicles.find_one({'vehicle_ref': vehicle_ref})
         return vehicle
     
-    def update_vehicle(self, vehicle_ref: str, data: dict):
+    def update_vehicle(self, vehicle_ref: str, data: dict) -> None:
         self._db.vehicles.update_one(
             {'vehicle_ref': vehicle_ref},
             {'$set': data},
@@ -43,6 +43,20 @@ class ObjectStorage:
 
     def delete_vehicle_activity(self, vehicle_ref: str) -> None:
         self._db.vehicle_activities.delete_one({'vehicle_ref': vehicle_ref})
+
+    def get_trips(self) -> dict:
+        return list(self._db.trips.find({}))
+    
+    def get_trip(self, trip_id: str) -> dict|None:
+        trip = self._db.trips.find_one({'trip_id': trip_id})
+        return trip
+    
+    def update_trip(self, trip_id: str, data: dict) -> None:
+        self._db.vehicles.update_one(
+            {'trip_id': trip_id},
+            {'$set': data},
+            upsert=True
+        )
 
     def _cleanup_vehicle_activity_gnss(self, data: dict) -> dict:
         

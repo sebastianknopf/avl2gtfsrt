@@ -106,13 +106,27 @@ class IomProcessor:
         if not issubclass(msg.__class__, AbstractDataPublicationStructure):
             raise TypeError(f"{msg.__class__.__name__} is not subclass of AbstractDataPublicationStructure and not usable in Pub/Sub")
         
+        # lookup for IDs which will be required for all handler results
+        vehicle_ref: str = get_tls_value(topic, 'Vehicle')
+
         # handle message
         if isinstance(msg, GnssPhysicalPositionDataStructure):
             handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
             result: dict = handler.handle(topic, msg)
 
-            if result['handler_success'] and result['handler_result'] is not None and result['handler_result']['triP_convergence']:
-                logging.info('Logging vehicle on onto a trip.....!')
+            if result is not None and result['handler_success']:
+                if result['handler_result'] is not None and result['handler_result']['trip_convergence']:
+                    trip: dict = result['handler_result']['trip_candidate']
+                    
+                    self._storage.update_vehicle(
+                        vehicle_ref,
+                        {'is_operationally_logged_on': True}
+                    )
+
+                    self._storage.update_trip(
+                        trip['serviceJourney']['id'],
+                        trip
+                    )
 
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
