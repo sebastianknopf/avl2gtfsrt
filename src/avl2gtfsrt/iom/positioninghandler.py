@@ -80,7 +80,14 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                     trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
                 else:
-                    trip_candidates: list[dict]|None = None
+                    #trip_candidates: list[dict]|None = None
+
+                    # return an empty result here
+                    # TODO: later, we need to check that the vehicle has not leaved its matching trip
+                    return {
+                        'handler_success': True,
+                        'handler_result': None
+                    }
 
                 matcher: AvlMatcher = AvlMatcher(
                     self._object_storage.get_vehicles(),
