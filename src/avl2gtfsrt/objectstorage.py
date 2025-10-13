@@ -26,6 +26,10 @@ class ObjectStorage:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
         return vehicle_activity['gnss_positions'][-1] if vehicle_activity is not None and len(vehicle_activity['gnss_positions']) > 0 else None
 
+    def get_vehicle_trip_descriptor(self, vehicle_ref: str) -> dict|None:
+        vehicle_activity: dict = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+        return vehicle_activity['trip_descriptor'] if vehicle_activity is not None else None
+
     def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
         vehicle_activity = self._cleanup_vehicle_activity_gnss(vehicle_activity)

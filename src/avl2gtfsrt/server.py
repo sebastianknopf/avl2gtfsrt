@@ -56,12 +56,14 @@ class GtfsRealtimeServer():
                     }
 
                     if vehicle.get('is_operationally_logged_on', False):
-                        entity['trip'] = {
-                            'trip_id': 'test',
-                            'route_id': 'test',
-                            'start_time': '11:00:00',
-                            'start_date': 20251010
-                        }
+                        vehicle_trip_descriptor: dict = self._object_storage.get_vehicle_trip_descriptor(vehicle.get('vehicle_ref'))
+                        if vehicle_trip_descriptor is not None:
+                            entity['trip'] = {
+                                'trip_id': vehicle_trip_descriptor['trip_id'],
+                                'route_id': vehicle_trip_descriptor['route_id'],
+                                'start_time': vehicle_trip_descriptor['start_time'],
+                                'start_date': vehicle_trip_descriptor['start_date']
+                            }
             
                     entities.append(entity)
 
