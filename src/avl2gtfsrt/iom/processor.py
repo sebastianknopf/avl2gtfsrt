@@ -47,6 +47,8 @@ class IomProcessor:
         return subscribed_topics
     
     def process(self, topic: str, payload: bytes) -> None:
+        logging.info(f"{self.__class__.__name__}: Received message in topic {topic}")
+        
         if self._tls_matches(topic, 'sub_itcs_inbox'):
             self._handle_request(topic, payload)
         else:
@@ -180,4 +182,4 @@ class IomProcessor:
             retain
         )
 
-        logging.info(f"{self.__class__.__name__}: Published message to topic: {tls_str}")
+        logging.info(f"{self.__class__.__name__}: Published message to topic {tls_str}")
