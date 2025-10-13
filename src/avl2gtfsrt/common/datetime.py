@@ -1,9 +1,9 @@
 from datetime import datetime
 
-def get_operation_day(operation_day: str) -> int:
+def get_operation_day(operation_day: str) -> str:
     
-    # remove hyphens (-) and convert result to int
-    return int(operation_day.replace("-", ""))
+    # remove hyphens (-)
+    return operation_day.replace("-", "")
 
 def get_operation_time(operation_day: str, iso_timestamp: str) -> str:
     
