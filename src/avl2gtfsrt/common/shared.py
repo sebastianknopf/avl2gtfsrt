@@ -23,3 +23,6 @@ def web_mercator(shape: object) -> object:
 
 def clamp(value: float|int, min_value: float|int, max_value: float|int) -> float|int:
     return max(min_value, min(max_value, value))
+
+def strip_feed_id(id: str) -> str:
+    return ':'.join(id.split(':')[1:])

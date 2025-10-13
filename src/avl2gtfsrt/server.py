@@ -14,6 +14,7 @@ from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import ParseDict
 from math import floor
 
+from avl2gtfsrt.common.shared import strip_feed_id
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class GtfsRealtimeServer():
@@ -59,8 +60,8 @@ class GtfsRealtimeServer():
                         vehicle_trip_descriptor: dict = self._object_storage.get_vehicle_trip_descriptor(vehicle.get('vehicle_ref'))
                         if vehicle_trip_descriptor is not None:
                             entity['vehicle']['trip'] = {
-                                'trip_id': vehicle_trip_descriptor['trip_id'],
-                                'route_id': vehicle_trip_descriptor['route_id'],
+                                'trip_id': strip_feed_id(vehicle_trip_descriptor['trip_id']),
+                                'route_id': strip_feed_id(vehicle_trip_descriptor['route_id']),
                                 'start_time': vehicle_trip_descriptor['start_time'],
                                 'start_date': vehicle_trip_descriptor['start_date']
                             }
