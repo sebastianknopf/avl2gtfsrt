@@ -1,5 +1,7 @@
 import logging
 
+from time import time
+
 from avl2gtfsrt.avl.spatialmatch import SpatialMatch
 from avl2gtfsrt.avl.temporalmatch import TemporalMatch
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
@@ -12,9 +14,9 @@ class AvlMatcher:
         self._trip_candidates = trip_candidates
 
     def process(self, vehicle: dict, gnss_positions: list[dict[str, any]], last_trip_candidate_probabilities: dict|None) -> tuple[bool, dict]:
-
         if len(self._trip_candidates) > 0:
             logging.info(f"{self.__class__.__name__}: Matching AVL data for vehicle {vehicle.get('vehicle_ref')} with {len(self._trip_candidates)} possible trip candidates ...")
+            start_time: float = time()
 
             if len(gnss_positions) > 1:
                 activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
@@ -90,7 +92,10 @@ class AvlMatcher:
                     trip_candidate_convergence: bool = bayesian_result[0]
                     trip_candidate_probabilities: dict = bayesian_result[1]
 
-                # print scored trip candidates
+                # stop time elapsed and print scored trip candidates
+                end_time: float = time()
+                logging.info(f"{self.__class__.__name__}: Matching completed after {(end_time - start_time)}s")
+
                 if len(trip_candidate_probabilities) > 0:
                     for trip_id, probability_vector in trip_candidate_probabilities.items():
                         logging.info(f"{self.__class__.__name__}: Matched [TripID] {trip_id} [Score] {probability_vector[-1]}, [Convergence] {trip_candidate_convergence}")
@@ -101,4 +106,4 @@ class AvlMatcher:
         else:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
 
-            return last_trip_candidate_probabilities
+            return (False, last_trip_candidate_probabilities)
