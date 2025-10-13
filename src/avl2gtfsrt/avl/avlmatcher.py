@@ -65,7 +65,8 @@ class AvlMatcher:
                 if len(trip_candidate_scores) == 0:
                     logging.warning(f"{self.__class__.__name__}: All trip candidates have been discarded due to logical or spatial, temporal mismatch.")
 
-                    return dict()
+                    # no convergence and no candidates ...
+                    return (False, dict())
 
                 # check if there was an update yet
                 # run bayesian update in order to manifest the trip scores
