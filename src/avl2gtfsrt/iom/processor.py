@@ -5,6 +5,7 @@ from paho.mqtt import client as mqtt
 
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.serialization import Serializable
+from avl2gtfsrt.common.datetime import get_operation_day, get_operation_time
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure, AbstractDataPublicationStructure
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
@@ -121,6 +122,21 @@ class IomProcessor:
                     self._storage.update_vehicle(
                         vehicle_ref,
                         {'is_operationally_logged_on': True}
+                    )
+
+                    self._storage.update_vehicle_activity(
+                        vehicle_ref,
+                        {
+                            'trip_descriptor': {
+                                'trip_id': trip['serviceJourney']['id'],
+                                'route_id': trip['serviceJourney']['journeyPattern']['line']['id'],
+                                'start_time': get_operation_time(
+                                    trip['date'],
+                                    trip['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
+                                ),
+                                'start_date': get_operation_day(trip['date'])
+                            }
+                        }
                     )
 
                     self._storage.update_trip(
