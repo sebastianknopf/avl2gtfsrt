@@ -12,9 +12,6 @@ from avl2gtfsrt.objectstorage import ObjectStorage
 class Worker:
 
     def __init__(self) -> None:
-        
-        self._organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
-        self._itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
         self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-worker')
         self._mqtt.on_connect = self._on_connect
@@ -28,9 +25,12 @@ class Worker:
         self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
 
         # create IoM instance
+        organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
+        itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
+
         self._iom: IoM = IoM(
-            organisation_id=self._organisation_id,
-            itcs_id=self._itcs_id,
+            organisation_id=organisation_id,
+            itcs_id=itcs_id,
             mqtt_client=self._mqtt,
             storage=self._object_storage
         )
