@@ -2,12 +2,11 @@ import logging
 import os
 import signal
 import threading
-import time
 
 from paho.mqtt import client as mqtt
 
 from avl2gtfsrt.common.env import is_debug
-from avl2gtfsrt.iom.processor import IomProcessor
+from avl2gtfsrt.iom.implementation import IoM
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class Worker:
@@ -29,7 +28,7 @@ class Worker:
         self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
 
         # create IoM instance
-        self._iom: IomProcessor = IomProcessor(
+        self._iom: IoM = IoM(
             organisation_id=self._organisation_id,
             itcs_id=self._itcs_id,
             mqtt_client=self._mqtt,
@@ -67,10 +66,6 @@ class Worker:
         # register signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
-
-        # wait for 5s to startup network adapters in container
-        #logging.info(f"{self.__class__.__name__}: Waiting for network adapters to start ...")
-        #time.sleep(5)
 
         # set username and password if provided
         mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)

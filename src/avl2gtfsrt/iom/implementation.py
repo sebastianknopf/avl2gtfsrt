@@ -19,7 +19,7 @@ class TopicLevelStructureDict(dict):
     def __missing__(self, key):
         return f"{{{key}}}"
     
-class IomProcessor:
+class IoM:
 
     def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: ObjectStorage) -> None:
         self._organisation_id = organisation_id
@@ -115,7 +115,7 @@ class IomProcessor:
         # handle message
         if isinstance(msg, GnssPhysicalPositionDataStructure):
             handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
-            result: dict = handler.handle(topic, msg)
+            result: dict|None = handler.handle(topic, msg)
 
             if result is not None and result['handler_success']:
                 if result['handler_result'] is not None and result['handler_result']['trip_convergence']:
