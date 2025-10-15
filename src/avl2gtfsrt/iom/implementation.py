@@ -216,33 +216,55 @@ class IoM:
             result: dict|None = handler.handle(topic, msg)
 
             if result is not None and result['handler_success']:
+                # load vehicle object in order to check logon status
+                vehicle: dict = self._storage.get_vehicle(vehicle_ref)
+
+                # if the handler found a convergence for a trip ...
                 if result['handler_result'] is not None and result['handler_result']['trip_convergence']:
-                    trip: dict = result['handler_result']['trip_candidate']
                     
-                    self._storage.update_vehicle(
-                        vehicle_ref,
-                        {'is_operationally_logged_on': True}
-                    )
+                    # proceed only if the vehicle is not operationally logged on actually ...
+                    if not vehicle.get('is_operationally_logged_on', False):
+                        trip: dict = result['handler_result']['trip_candidate']
+                        
+                        self._storage.update_vehicle(
+                            vehicle_ref,
+                            {'is_operationally_logged_on': True}
+                        )
 
-                    self._storage.update_vehicle_activity(
-                        vehicle_ref,
-                        {
-                            'trip_descriptor': {
-                                'trip_id': trip['serviceJourney']['id'],
-                                'route_id': trip['serviceJourney']['journeyPattern']['line']['id'],
-                                'start_time': get_operation_time(
-                                    trip['date'],
-                                    trip['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
-                                ),
-                                'start_date': get_operation_day(trip['date'])
+                        self._storage.update_vehicle_activity(
+                            vehicle_ref,
+                            {
+                                'trip_descriptor': {
+                                    'trip_id': trip['serviceJourney']['id'],
+                                    'route_id': trip['serviceJourney']['journeyPattern']['line']['id'],
+                                    'start_time': get_operation_time(
+                                        trip['date'],
+                                        trip['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
+                                    ),
+                                    'start_date': get_operation_day(trip['date'])
+                                }
                             }
-                        }
-                    )
+                        )
 
-                    self._storage.update_trip(
-                        trip['serviceJourney']['id'],
-                        trip
-                    )
+                        self._storage.update_trip(
+                            trip['serviceJourney']['id'],
+                            trip
+                        )
+
+                # if the handler found no convergence for a trip
+                elif result['handler_result'] is not None and not result['handler_result']['trip_convergence']:
+                    
+                    # proceed only if the vehicle is operationally logged on to a trip ...
+                    if vehicle.get('is_operationally_logged_on', False):
+                        self._storage.update_vehicle(
+                            vehicle_ref,
+                            {'is_operationally_logged_on': False}
+                        )
+
+                        self._storage.update_vehicle_activity(
+                            vehicle_ref,
+                            {'trip_descriptor': None}
+                        )
 
         # after handling release the current vehicle
         with self._lock:
