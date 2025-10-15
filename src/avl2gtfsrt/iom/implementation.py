@@ -4,6 +4,8 @@ import re
 
 from concurrent.futures import ThreadPoolExecutor
 from paho.mqtt import client as mqtt
+from threading import Lock
+from queue import Queue
 
 from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.common.mqtt import get_tls_value
@@ -29,6 +31,11 @@ class IoM:
         self._itcs_id = itcs_id
         self._storage = object_storage
         self._executor = thread_executor
+
+        # setup internal thread handling members
+        self._vehicle_locks: dict[str, bool] = dict()
+        self._vehicle_queues: dict[str, Queue] = dict()
+        self._lock = Lock()
 
         # create MQTT client
         self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-IoM')
@@ -127,6 +134,14 @@ class IoM:
 
             vehicle_ref: str = msg.vehicle_ref.value
 
+            with self._lock:
+                # register vehicle or reset all monitoring lists  
+                if vehicle_ref not in self._vehicle_locks:
+                    self._vehicle_locks[vehicle_ref] = False
+
+                if vehicle_ref not in self._vehicle_queues:
+                    self._vehicle_queues[vehicle_ref] = Queue()
+
             self._publish(
                 'pub_vehicle_inbox', 
                 response.xml(),
@@ -141,6 +156,14 @@ class IoM:
 
             vehicle_ref: str = msg.vehicle_ref.value
 
+            with self._lock:
+                # reset all monitoring lists
+                if vehicle_ref in self._vehicle_locks:
+                    self._vehicle_locks[vehicle_ref] = False
+
+                if vehicle_ref in self._vehicle_queues:
+                    self._vehicle_queues[vehicle_ref] = Queue()
+
             self._publish(
                 'pub_vehicle_inbox', 
                 response.xml(),
@@ -150,7 +173,6 @@ class IoM:
             )
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
-        
         # handle message based on the topic
         msg: AbstractBasicStructure = Serializable.load(payload)
 
@@ -162,7 +184,33 @@ class IoM:
         # lookup for IDs which will be required for all handler results
         vehicle_ref: str = get_tls_value(topic, 'Vehicle')
 
-        # handle message
+        with self._lock:
+            if vehicle_ref not in self._vehicle_locks or vehicle_ref not in self._vehicle_queues:
+                logging.error(f"{self.__class__.__name__}: Vehicle not registered in monitoring yet... Make sure the vehicle is technically logged on.")
+                return
+
+            if not self._vehicle_locks[vehicle_ref]:
+                # mark vehicle as locked and put the action into the executor
+                self._vehicle_locks[vehicle_ref] = True
+                self._executor.submit(
+                    self._handle_message_executor,
+                    vehicle_ref,
+                    topic,
+                    msg
+                )
+            else:
+                # the vehicle is currently processed by a thread
+                # put the message into the queue
+                # it will be executed once the current thread terminates
+                logging.info(f"{self.__class__.__name__}: Vehicle is blocked currently, enqueuing message ...")
+                self._vehicle_queues[vehicle_ref].put((
+                    vehicle_ref,
+                    topic, 
+                    msg
+                ))
+
+    def _handle_message_executor(self, vehicle_ref: str, topic: str, msg: AbstractBasicStructure) -> None:
+        # handle incoming GnssPhysicalPositionData update
         if isinstance(msg, GnssPhysicalPositionDataStructure):
             handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
             result: dict|None = handler.handle(topic, msg)
@@ -196,6 +244,19 @@ class IoM:
                         trip
                     )
 
+        # after handling release the current vehicle
+        with self._lock:
+            # check whether there're other messages in queue for this vehicle
+            # if so, process them too; else remove the lock from the vehicle
+            if not self._vehicle_queues[vehicle_ref].empty():
+                next_message: tuple = self._vehicle_queues[vehicle_ref].get()
+                self._executor.submit(
+                    self._handle_message_executor,
+                    *next_message
+                )
+            else:
+                self._vehicle_locks[vehicle_ref] = False
+        
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
             tls_name = f"_tls_{tls_name}"
