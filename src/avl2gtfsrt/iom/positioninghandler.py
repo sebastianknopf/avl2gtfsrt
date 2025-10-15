@@ -90,7 +90,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     }
 
                 matcher: AvlMatcher = AvlMatcher(
-                    self._object_storage.get_vehicles(),
+                    self._object_storage,
                     trip_candidates
                 )
                 

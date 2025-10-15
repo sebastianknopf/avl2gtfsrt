@@ -1,16 +1,20 @@
 import logging
+import polyline
 
+from shapely.geometry import LineString
 from time import time
 
 from avl2gtfsrt.avl.spatialmatch import SpatialMatch
 from avl2gtfsrt.avl.temporalmatch import TemporalMatch
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
+from avl2gtfsrt.common.shared import web_mercator
 from avl2gtfsrt.common.statistics import bayesian_update
+from avl2gtfsrt.objectstorage import ObjectStorage
 
 class AvlMatcher:
 
-    def __init__(self, vehicles: dict, trip_candidates: dict) -> None:
-        self._vehicles = vehicles
+    def __init__(self, object_storage: ObjectStorage, trip_candidates: dict) -> None:
+        self._storage = object_storage
         self._trip_candidates = trip_candidates
 
     def process(self, vehicle: dict, gnss_positions: list[dict[str, any]], last_trip_candidate_probabilities: dict|None) -> tuple[bool, dict]:
@@ -33,15 +37,23 @@ class AvlMatcher:
 
                     # check whether another vehicle has logged on this trip
                     # skip the ressource-consuming matching in that case and skip the candidate
-                    if any(v.get('current_trip_id', None) == trip_candidate['serviceJourney']['id'] for v in self._vehicles):
+                    if any(
+                        self._storage.get_vehicle_trip_descriptor(v) is not None 
+                        and self._storage.get_vehicle_trip_descriptor(v)['trip_id'] == trip_candidate['serviceJourney']['id'] 
+                        for v in self._storage.get_vehicles()
+                    ):
                         continue
                     
                     # match trip candidate for scoring
                     # 1. step: spatial matching
                     # 2. step: temporal matching
 
+                    # generate LineString in web-mercator projection for spatial and temporal matching
+                    trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_candidate['serviceJourney']['pointsOnLink']['points'])])
+                    trip_shape = web_mercator(trip_shape)
+
                     # run spatial matching for trip candidate
-                    spatial_match: SpatialMatch = SpatialMatch(trip_candidate['serviceJourney']['pointsOnLink']['points'])
+                    spatial_match: SpatialMatch = SpatialMatch(trip_shape)
                     spatial_match_score: float = spatial_match.calculate_match_score(activity)
                     if spatial_match_score == 0.0:
                         continue
@@ -49,14 +61,12 @@ class AvlMatcher:
                     # run temporal matching for trip candidate
                     temporal_match: TemporalMatch = TemporalMatch(
                         trip_candidate['serviceJourney']['estimatedCalls'], 
-                        trip_candidate['serviceJourney']['pointsOnLink']['points']
+                        trip_shape
                     )
 
                     temporal_match_score: float = temporal_match.calculate_match_score(spatial_match.spatial_progress_percentage)
                     if temporal_match_score == 0.0:
                         continue
-
-                    next_stop_metrics = temporal_match.predict_next_stop_metrics(spatial_match.spatial_progress_percentage)
 
                     # finally calculate trip candidate score and store it for this iteration
                     trip_candidate_score: float = spatial_match_score * temporal_match_score

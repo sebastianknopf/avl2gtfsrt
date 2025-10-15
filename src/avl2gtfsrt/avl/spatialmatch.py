@@ -1,5 +1,4 @@
 import logging
-import polyline
 
 from shapely.geometry import LineString, Polygon, Point
 
@@ -13,11 +12,10 @@ class SpatialMatch:
     TRIP_SHAPE_MATCHING_RATIO: float = 0.60
     TRIP_SHAPE_FORWARD_MOVEMENT_RATIO: float = 0.75
 
-    def __init__(self, trip_shape_polyline: str) -> None:
+    def __init__(self, trip_shape: LineString) -> None:
         
         # transform shape of the trip candidate into a LineString
-        self._trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_shape_polyline)])
-        self._trip_shape = web_mercator(self._trip_shape)
+        self._trip_shape: LineString = trip_shape
         
         # add buffer around trip shape to allow for some tolerance in matching
         self._buffered_trip_shape: Polygon = self._trip_shape.buffer(self.TRIP_SHAPE_BUFFER_SIZE)
