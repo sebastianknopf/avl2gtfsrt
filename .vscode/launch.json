@@ -43,17 +43,7 @@
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/dev.env"
-        },
-        {
-            "name": "XMLGEN",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/util/xmlgen.py",
-            "console": "integratedTerminal",
-            "python": "${workspaceFolder}/venv/Scripts/python.exe",
-            "env": {"PYTHONPATH": "${workspaceRoot}/src"}
         }
-        
     ],
     "inputs": [
         {
