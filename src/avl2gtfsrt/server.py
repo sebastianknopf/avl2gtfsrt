@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from fastapi import FastAPI
 from fastapi import Request
 from fastapi import Response
+from fastapi.middleware.cors import CORSMiddleware
 from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import ParseDict
 from math import floor
@@ -29,8 +30,15 @@ class GtfsRealtimeServer():
         
         logging.info(f"{self.__class__.__name__}: Creating FastAPI instance ...")
         self._fastapi = FastAPI()
-        self._api_router = APIRouter()
+        self._fastapi.add_middleware(
+            CORSMiddleware,
+            allow_origins=['*'],
+            allow_credentials=True,
+            allow_methods=['GET'],
+            allow_headers=['*']
+        )
 
+        self._api_router = APIRouter()
         self._api_router.add_api_route('/vehicle-positions.pbf', endpoint=self._vehicle_positions, methods=['GET'], name='vehicle_positions')
         self._api_router.add_api_route('/trip-updates.pbf', endpoint=self._trip_updates, methods=['GET'], name='trip_updates')
 
