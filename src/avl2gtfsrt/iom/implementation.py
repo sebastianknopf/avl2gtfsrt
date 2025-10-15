@@ -1,8 +1,11 @@
 import logging
+import os
 import re
 
+from concurrent.futures import ThreadPoolExecutor
 from paho.mqtt import client as mqtt
 
+from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.serialization import Serializable
 from avl2gtfsrt.common.datetime import get_operation_day, get_operation_time
@@ -21,16 +24,19 @@ class TopicLevelStructureDict(dict):
     
 class IoM:
 
-    def __init__(self, organisation_id: str, itcs_id: str, mqtt_client: mqtt.Client, storage: ObjectStorage) -> None:
+    def __init__(self, organisation_id: str, itcs_id: str, object_storage: ObjectStorage, thread_executor: ThreadPoolExecutor) -> None:
         self._organisation_id = organisation_id
         self._itcs_id = itcs_id
-        self._mqtt_client = mqtt_client
-        self._storage = storage
+        self._storage = object_storage
+        self._executor = thread_executor
+
+        # create MQTT client
+        self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-IoM')
 
         # create TLS topic structures
-        self._tls_sub_itcs_inbox = ("IoM/1.0/DataVersion/+/Inbox/ItcsInbox/Country/de/+/Organisation/{organisation_id}/+/ItcsId/{itcs_id}/#", 2)
-        self._tls_pub_vehicle_inbox = ("IoM/1.0/DataVersion/{data_version}/Inbox/VehicleInbox/Country/de/any/Organisation/{organisation_id}/any/VehicleId/{vehicle_id}/CorrelationId/{correlation_id}/ResponseData", 2)
-        self._tls_sub_vehicle_physical_position = ("IoM/1.0/DataVersion/+/Country/de/+/Organisation/{organisation_id}/+/Vehicle/+/+/PhysicalPosition/#", 0)
+        self._tls_sub_itcs_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/+/Inbox/ItcsInbox/Country/de/+/Organisation/{organisation_id}/+/ItcsId/{itcs_id}/#", 2)
+        self._tls_pub_vehicle_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/{data_version}/Inbox/VehicleInbox/Country/de/any/Organisation/{organisation_id}/any/VehicleId/{vehicle_id}/CorrelationId/{correlation_id}/ResponseData", 2)
+        self._tls_sub_vehicle_physical_position: tuple[str, int] = ("IoM/1.0/DataVersion/+/Country/de/+/Organisation/{organisation_id}/+/Vehicle/+/+/PhysicalPosition/#", 0)
 
         # keep track of all global placeholders here
         # used in _get_tls method later
@@ -46,6 +52,27 @@ class IoM:
         
         return subscribed_topics
     
+    def start(self) -> None:
+        # define MQTT callback methods
+        self._mqtt.on_connect = self._on_connect
+        self._mqtt.on_message = self._on_message
+        self._mqtt.on_disconnect = self._on_disconnect
+
+        # set username and password if provided
+        mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)
+        mqtt_password: str = os.getenv('A2G_WORKER_MQTT_PASSWORD', None)
+        if mqtt_username is not None and mqtt_password is not None:
+            self._mqtt.username_pw_set(username=mqtt_username, password=mqtt_password)
+
+        # connect to MQTT broker
+        mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', 'test.mosquitto.org')
+        mqtt_port: str = os.getenv('A2G_WORKER_MQTT_PORT', '1883')
+
+        logging.info(f"{self.__class__.__name__}: Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
+        self._mqtt.connect(mqtt_host, int(mqtt_port))
+        
+        self._mqtt.loop_start()
+    
     def process(self, topic: str, payload: bytes) -> None:
         logging.info(f"{self.__class__.__name__}: Received message in topic {topic}")
         
@@ -55,8 +82,31 @@ class IoM:
             self._handle_message(topic, payload)
 
     def terminate(self) -> None:
-        pass
+        logging.info(f"{self.__class__.__name__}: Shutting down MQTT connection...")
+        self._mqtt.disconnect()
 
+        self._mqtt.loop_stop()
+
+    def _on_connect(self, client, userdata, flags, rc, properties):
+        if not rc.is_failure:
+            for topic, qos in self.get_subscribed_topics():
+                logging.info(f"{self.__class__.__name__}: Subscribing to topic: {topic}")
+                self._mqtt.subscribe(topic, qos=qos)
+
+    def _on_message(self, client, userdata, message):
+        try:
+            self.process(message.topic, message.payload)
+        except Exception as ex:
+            if is_debug():
+                logging.exception(ex)
+            else:
+                logging.error(str(ex))
+
+    def _on_disconnect(self, client, userdata, flags, rc, properties):
+        for topic, qos in self.get_subscribed_topics():
+            logging.info(f"{self.__class__.__name__}: Unsubscribing from topic: {topic}")
+            self._mqtt.unsubscribe(topic)
+    
     def _handle_request(self, topic: str, payload: bytes) -> None:
         # lookup for correlation ID in the topic
         data_version: str = get_tls_value(topic, 'DataVersion')
@@ -175,7 +225,7 @@ class IoM:
         tls_str: str = tls[0]
         tls_str = tls_str.format(**arguments)
 
-        self._mqtt_client.publish(
+        self._mqtt.publish(
             tls_str,
             payload,
             tls[1],
