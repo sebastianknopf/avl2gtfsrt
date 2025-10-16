@@ -220,11 +220,13 @@ class IoM:
                 vehicle: dict = self._storage.get_vehicle(vehicle_ref)
 
                 # if the handler found a convergence for a trip ...
-                if result['handler_result'] is not None and result['handler_result']['trip_convergence']:
+                if result['handler_result'] is not None and 'trip_convergence' in result['handler_result'] and result['handler_result']['trip_convergence']:
                     
                     # proceed only if the vehicle is not operationally logged on actually ...
                     if not vehicle.get('is_operationally_logged_on', False):
                         trip: dict = result['handler_result']['trip_candidate']
+
+                        logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip['serviceJourney']['id']}. Performing operational log on ...")
                         
                         self._storage.update_vehicle(
                             vehicle_ref,
@@ -251,11 +253,13 @@ class IoM:
                             trip
                         )
 
-                # if the handler found no convergence for a trip
-                elif result['handler_result'] is not None and not result['handler_result']['trip_convergence']:
+                # if the handler tested a trip and the test failed ...
+                elif result['handler_result'] is not None and 'trip_matching' in result['handler_result'] and not result['handler_result']['trip_matching']:
                     
                     # proceed only if the vehicle is operationally logged on to a trip ...
                     if vehicle.get('is_operationally_logged_on', False):
+                        logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
+                        
                         self._storage.update_vehicle(
                             vehicle_ref,
                             {'is_operationally_logged_on': False}
