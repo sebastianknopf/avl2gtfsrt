@@ -17,7 +17,7 @@ class AvlMatcher:
         self._storage = object_storage
         self._trip_candidates = trip_candidates
 
-    def process(self, vehicle: dict, gnss_positions: list[dict[str, any]], last_trip_candidate_probabilities: dict|None) -> tuple[bool, dict]:
+    def match(self, vehicle: dict, gnss_positions: list[dict[str, any]], last_trip_candidate_probabilities: dict|None) -> tuple[bool, dict]:
         if len(self._trip_candidates) > 0:
             logging.info(f"{self.__class__.__name__}: Matching AVL data for vehicle {vehicle.get('vehicle_ref')} with {len(self._trip_candidates)} possible trip candidates ...")
             start_time: float = time()
@@ -104,7 +104,7 @@ class AvlMatcher:
 
                 # stop time elapsed and print scored trip candidates
                 end_time: float = time()
-                logging.info(f"{self.__class__.__name__}: Matching completed after {(end_time - start_time)}s")
+                logging.info(f"{self.__class__.__name__}: Matching completed after {(end_time - start_time)}s.")
 
                 if len(trip_candidate_probabilities) > 0:
                     for trip_id, probability_vector in trip_candidate_probabilities.items():
@@ -112,8 +112,49 @@ class AvlMatcher:
 
                 # finally return updated trip scores
                 return (trip_candidate_convergence, trip_candidate_probabilities)
+            else:
+                logging.warning(f"{self.__class__.__name__}: No AVL data for vehicle {vehicle.get('vehicle_ref')}.")
+
+                return (False, last_trip_candidate_probabilities)
 
         else:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to match AVL data for vehicle {vehicle.get('vehicle_ref')}.")
 
             return (False, last_trip_candidate_probabilities)
+
+    def test(self, vehicle: dict, gnss_positions: list[dict[str, any]]) -> dict[str, bool]:
+        if len(self._trip_candidates) > 0:
+            logging.info(f"{self.__class__.__name__}: Testing AVL data for vehicle {vehicle.get('vehicle_ref')} with {len(self._trip_candidates)} possible trip candidates ...")
+            start_time: float = time()
+
+            if len(gnss_positions) > 1:
+                activity: SpatialVectorCollection = SpatialVectorCollection(gnss_positions)
+
+                trip_matches: dict[str, bool] = dict()
+                for trip_candidate in self._trip_candidates:
+
+                    # generate LineString in web-mercator projection for spatial and temporal matching
+                    trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_candidate['serviceJourney']['pointsOnLink']['points'])])
+                    trip_shape = web_mercator(trip_shape)
+
+                    # run spatial matching for trip candidate
+                    spatial_match: SpatialMatch = SpatialMatch(trip_shape)
+                    spatial_match_score: float = spatial_match.calculate_match_score(activity)
+                    if spatial_match_score > 0.0:
+                        trip_matches[trip_candidate['serviceJourney']['id']] = True
+                    else:
+                        trip_matches[trip_candidate['serviceJourney']['id']] = False
+
+                # stop time elapsed
+                end_time: float = time()
+                logging.info(f"{self.__class__.__name__}: Testing completed after {(end_time - start_time)}s.")
+            
+                return trip_matches
+            else:
+                logging.warning(f"{self.__class__.__name__}: No AVL data for vehicle {vehicle.get('vehicle_ref')}.")
+
+                return dict()
+        else:
+            logging.warning(f"{self.__class__.__name__}: No trip candidates available to test AVL data for vehicle {vehicle.get('vehicle_ref')}.")
+
+            return dict()
