@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import threading
+import time
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -54,7 +55,8 @@ class Worker:
         try:
             # watch self._should_run for stopping gracefully
             while self._should_run.is_set():
-                pass
+                time.sleep(1)
+
         except Exception as ex:
             logging.error(f"{self.__class__.__name__}: Exception in worker: {ex}")
         finally:
