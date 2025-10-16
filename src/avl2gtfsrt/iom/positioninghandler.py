@@ -69,7 +69,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                 # check if the vehicle is not operationally logged on
                 # request all possible trip candidates in that case
-                # otherwise use the cached trip candidates
+                # otherwise check whether the vehicle is still on the trip which
+                # was logged on before
                 if not vehicle.get('is_operationally_logged_on', False):
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is not operationally logged on. Loading nominal trip candidates ...")
 
@@ -79,52 +80,88 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     )
 
                     trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
-                else:
-                    #trip_candidates: list[dict]|None = None
 
-                    # return an empty result here
-                    # TODO: later, we need to check that the vehicle has not leaved its matching trip
+                    matcher: AvlMatcher = AvlMatcher(
+                        self._object_storage,
+                        trip_candidates
+                    )
+                    
+                    result: tuple[bool, dict] = matcher.match(
+                        vehicle, 
+                        vehicle_activity['gnss_positions'],
+                        vehicle_activity.get('trip_candidate_probabilities', None)
+                    )
+
+                    trip_candidate_convergence: bool = result[0]
+                    trip_candidate_probabilities: dict = result[1]
+
+                    # save trip candidate scores to vehicle activity
+                    vehicle_activity['trip_candidate_convergence'] = trip_candidate_convergence
+                    vehicle_activity['trip_candidate_probabilities'] = trip_candidate_probabilities
+
+                    self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+
+                    # return result
+                    # (bool, (bool, object)) <--- (Success/Failure of the Handler, (TripConvergence, TripObject))
+                    if trip_candidate_convergence:
+                        trip_candidate_id: str = max(trip_candidate_probabilities, key=trip_candidate_probabilities.get)
+                        trip_candidate: dict|None = next((t for t in trip_candidates if t['serviceJourney']['id'] == trip_candidate_id), None)
+                    else:
+                        trip_candidate: dict|None = None
+                    
                     return {
                         'handler_success': True,
-                        'handler_result': None
+                        'handler_result': {
+                            'trip_convergence': trip_candidate_convergence,
+                            'trip_candidate': trip_candidate
+                        }
                     }
-
-                matcher: AvlMatcher = AvlMatcher(
-                    self._object_storage,
-                    trip_candidates
-                )
-                
-                result: tuple[bool, dict] = matcher.process(
-                    vehicle, 
-                    vehicle_activity['gnss_positions'],
-                    vehicle_activity.get('trip_candidate_probabilities', None)
-                )
-
-                trip_candidate_convergence: bool = result[0]
-                trip_candidate_probabilities: dict = result[1]
-
-                # save trip candidate scores to vehicle activity
-                vehicle_activity['trip_candidate_convergence'] = trip_candidate_convergence
-                vehicle_activity['trip_candidate_probabilities'] = trip_candidate_probabilities
-
-                self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
-
-                # return result
-                # (bool, (bool, object)) <--- (Success/Failure of the Handler, (TripConvergence, TripObject))
-                if trip_candidate_convergence:
-                    trip_candidate_id: str = max(trip_candidate_probabilities, key=trip_candidate_probabilities.get)
-                    trip_candidate: dict|None = next((t for t in trip_candidates if t['serviceJourney']['id'] == trip_candidate_id), None)
                 else:
-                    trip_candidate: dict|None = None
-                
-                return {
-                    'handler_success': True,
-                    'handler_result': {
-                        'trip_convergence': trip_candidate_convergence,
-                        'trip_candidate': trip_candidate
-                    }
-                }
+                    logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is operationally logged on. Verifying current trip ...")
+                    
+                    current_trip_id: str = vehicle_activity['trip_descriptor']['trip_id']
+                    current_trip: dict = self._object_storage.get_trip(current_trip_id)
 
+                    matcher: AvlMatcher = AvlMatcher(
+                        self._object_storage,
+                        [current_trip]
+                    )
+
+                    trip_matches: dict[str, bool] = matcher.test(
+                        vehicle,
+                        vehicle_activity['gnss_positions']
+                    )
+
+                    # update vehicle activity ...
+                    if 'trip_failures' not in vehicle_activity:
+                        vehicle_activity['trip_failures'] = 0
+                    
+                    # if the trip matches, reset failure counter
+                    # otherwise increment the counter
+                    if trip_matches[current_trip_id]:
+                        vehicle_activity['trip_failures'] = 0
+                    else:
+                        vehicle_activity['trip_failures'] = vehicle_activity['trip_failures'] + 1
+
+                    self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+                    
+                    # if there're not too many failures, return a positive result
+                    # otherwise - OMG - a negative result
+                    if vehicle_activity['trip_failures'] < 4:
+                        return {
+                            'handler_success': True,
+                            'handler_result': {
+                                'trip_matching': True
+                            }
+                        }
+                    else:
+                        return {
+                            'handler_success': True,
+                            'handler_result': {
+                                'trip_matching': False
+                            }
+                        }
+                    
         return {
             'handler_success': True,
             'handler_result': None
