@@ -32,6 +32,8 @@ class TripDescriptor:
 
 @dataclass
 class TripMetrics:
+    current_stop_index: Optional[int] = None
     current_stop_id: Optional[str] = None
+    next_stop_index: Optional[int] = None
     next_stop_id: Optional[str] = None
     delay: Optional[str] = None

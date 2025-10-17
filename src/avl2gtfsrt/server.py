@@ -16,6 +16,8 @@ from google.protobuf.json_format import ParseDict
 from math import floor
 
 from avl2gtfsrt.common.shared import strip_feed_id
+from avl2gtfsrt.model.serialization import deserialize
+from avl2gtfsrt.model.types import TripMetrics
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class GtfsRealtimeServer():
@@ -66,6 +68,7 @@ class GtfsRealtimeServer():
 
                     if vehicle.get('is_operationally_logged_on', False):
                         vehicle_trip_descriptor: dict = self._object_storage.get_vehicle_trip_descriptor(vehicle.get('vehicle_ref'))
+                        vehicle_trip_metrics: TripMetrics = self._object_storage.get_vehicle_trip_metrics(vehicle.get('vehicle_ref'))
                         if vehicle_trip_descriptor is not None:
                             entity['vehicle']['trip'] = {
                                 'trip_id': strip_feed_id(vehicle_trip_descriptor['trip_id']),
@@ -73,6 +76,12 @@ class GtfsRealtimeServer():
                                 'start_time': vehicle_trip_descriptor['start_time'],
                                 'start_date': vehicle_trip_descriptor['start_date']
                             }
+
+                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_index is not None:
+                                entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_index
+
+                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
+                                entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
             
                     entities.append(entity)
 

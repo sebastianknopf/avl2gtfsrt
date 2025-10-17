@@ -104,8 +104,10 @@ class TemporalMatch:
         for stop_index, stop_projection in self._stop_projections_on_trip_shape.items():
             if stop_projection >= position_projection:
                 if stop_index > 0:
+                    trip_metrics.current_stop_index = stop_index - 1
                     trip_metrics.current_stop_id = self._estimated_calls[stop_index - 1]['quay']['id']
                 
+                trip_metrics.next_stop_index = stop_index
                 trip_metrics.next_stop_id = self._estimated_calls[stop_index]['quay']['id']
 
                 break

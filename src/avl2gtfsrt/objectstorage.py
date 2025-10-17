@@ -1,6 +1,8 @@
 from pymongo import MongoClient
 
 from avl2gtfsrt.common.shared import unixtimestamp
+from avl2gtfsrt.model.serialization import serialize, deserialize
+from avl2gtfsrt.model.types import *
 
 class ObjectStorage:
     def __init__(self, username: str, password: str, db_name: str = 'avl2gtfsrt'):
@@ -29,6 +31,12 @@ class ObjectStorage:
     def get_vehicle_trip_descriptor(self, vehicle_ref: str) -> dict|None:
         vehicle_activity: dict = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
         return vehicle_activity['trip_descriptor'] if vehicle_activity is not None else None
+    
+    def get_vehicle_trip_metrics(self, vehicle_ref: str) -> TripMetrics|None:
+        data: dict = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
+        vehicle_activity: VehicleActivity = deserialize(VehicleActivity, data)
+
+        return vehicle_activity.trip_metrics if vehicle_activity is not None else None
 
     def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
         vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
