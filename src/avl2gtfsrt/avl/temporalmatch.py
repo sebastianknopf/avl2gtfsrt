@@ -63,6 +63,14 @@ class TemporalMatch:
                 
                 self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
+
+                #self.time_based_current_stop_projection: float = this_projection
+                self.time_based_current_stop_sequence: int = this_call['stopPositionInPattern']
+                #self.current_stop_id: str = this_departure['quay']['id']
+
+                #self.time_based_next_stop_projection: float = next_projection
+                self.time_based_next_stop_sequence: int = next_call['stopPositionInPattern']
+                #self.next_stop_id: str = next_departure['quay']['id']
                 
                 break        
 
@@ -96,6 +104,7 @@ class TemporalMatch:
     
     def predict_trip_metrics(self, gnss_position: GnssPosition) -> TripMetrics:
         trip_metrics: TripMetrics = TripMetrics()
+        trip_metrics.current_stop_status = 'IN_TRANSIT_TO'
 
         # calculate current spatial progress for further processing
         position_projection: float = self._trip_shape.project(web_mercator(Point(gnss_position.longitude, gnss_position.latitude)))
@@ -103,16 +112,33 @@ class TemporalMatch:
         # determine current and next stop index
         for stop_index, stop_projection in self._stop_projections_on_trip_shape.items():
             if stop_projection >= position_projection:
+                # calculate distance to the next stop and predict stop status
+                distance: float = stop_projection - position_projection
+                if abs(distance) < 30:
+                    trip_metrics.current_stop_status = 'STOPPED_AT'
+                elif distance < 60:
+                    trip_metrics.current_stop_status = 'INCOMING_AT'
+
+                # set current and next stop sequence and ID
                 if stop_index > 0:
-                    trip_metrics.current_stop_index = stop_index - 1
+                    trip_metrics.current_stop_sequence = stop_index - 1
                     trip_metrics.current_stop_id = self._estimated_calls[stop_index - 1]['quay']['id']
                 
-                trip_metrics.next_stop_index = stop_index
+                trip_metrics.next_stop_sequence = stop_index
                 trip_metrics.next_stop_id = self._estimated_calls[stop_index]['quay']['id']
+
+                # monitor delay between nominal next stop and AVL-based next stop
+                # calculate the difference based on the departure times
+                # TODO: implement a better delay prediciton here ... this is quite... basic
+                actual_next_call: dict|None = next((c for c in self._estimated_calls if c['stopPositionInPattern'] == trip_metrics.next_stop_sequence), None)
+                nominal_next_call: dict|None = next((c for c in self._estimated_calls if c['stopPositionInPattern'] == self.time_based_next_stop_sequence), None)
+                
+                if actual_next_call is not None and nominal_next_call is not None:
+                    actual_next_departure: int = int(datetime.fromisoformat(actual_next_call['aimedDepartureTime'] if 'aimedDepartureTime' in actual_next_call else actual_next_call['aimedArrivalTime']).timestamp())
+                    nominal_next_departure: int = int(datetime.fromisoformat(nominal_next_call['aimedDepartureTime'] if 'aimedDepartureTime' in nominal_next_call else nominal_next_call['aimedArrivalTime']).timestamp())
+
+                    trip_metrics.current_delay = int(nominal_next_departure - actual_next_departure)
 
                 break
 
-        # TODO: calculate delay somehow ...
-
         return trip_metrics
-
