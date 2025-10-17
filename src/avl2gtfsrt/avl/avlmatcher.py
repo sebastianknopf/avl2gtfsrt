@@ -9,6 +9,8 @@ from avl2gtfsrt.avl.temporalmatch import TemporalMatch
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
 from avl2gtfsrt.common.shared import web_mercator
 from avl2gtfsrt.common.statistics import bayesian_update
+from avl2gtfsrt.model.serialization import serialize, deserialize
+from avl2gtfsrt.model.types import Vehicle, GnssPosition, TripMetrics
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class AvlMatcher:
@@ -158,3 +160,33 @@ class AvlMatcher:
             logging.warning(f"{self.__class__.__name__}: No trip candidates available to test AVL data for vehicle {vehicle.get('vehicle_ref')}.")
 
             return dict()
+        
+    def predict_trip_metrics(self, vehicle: Vehicle, gnss_position: GnssPosition) -> dict[TripMetrics]|None:
+        if len(self._trip_candidates) > 0:
+            logging.info(f"{self.__class__.__name__}: Predicting trip metrics for AVL data of vehicle {vehicle.vehicle_ref} with {len(self._trip_candidates)} possible trip candidates ...")
+            start_time: float = time()
+            trip_metrics: dict[str, TripMetrics] = dict()
+
+            for trip_candidate in self._trip_candidates:
+                
+                # generate LineString in web-mercator projection for spatial and temporal matching
+                trip_shape: LineString = LineString([c[::-1] for c in polyline.decode(trip_candidate['serviceJourney']['pointsOnLink']['points'])])
+                trip_shape = web_mercator(trip_shape)
+
+                # run temporal matching for trip candidate
+                temporal_match: TemporalMatch = TemporalMatch(
+                    trip_candidate['serviceJourney']['estimatedCalls'], 
+                    trip_shape
+                )
+
+                trip_metrics[trip_candidate['serviceJourney']['id']] = temporal_match.predict_trip_metrics(gnss_position)
+
+            # stop time elapsed
+            end_time: float = time()
+            logging.info(f"{self.__class__.__name__}: Prediction completed after {(end_time - start_time)}s.")
+        
+            return trip_metrics
+        else:
+            logging.warning(f"{self.__class__.__name__}: No trip candidates available to predict trip metrics for AVL data of vehicle {vehicle.get('vehicle_ref')}.")
+
+            return None

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from shapely.geometry import LineString, Point
 
 from avl2gtfsrt.common.shared import web_mercator, clamp
+from avl2gtfsrt.model.types import GnssPosition, TripMetrics
 
 class TemporalMatch:
 
@@ -39,7 +40,7 @@ class TemporalMatch:
             return
 
         # calculate the current percentual progress of the trip 
-        # based on estimated calls
+        # based on times of estimated calls
         for c in range(0, len(self._estimated_calls) - 1):
             this_call: dict = self._estimated_calls[c]
             next_call: dict = self._estimated_calls[c + 1]
@@ -62,9 +63,7 @@ class TemporalMatch:
                 
                 self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
-
-                self.next_stop_index = next_call['stopPositionInPattern']
-
+                
                 break        
 
     def calculate_match_score(self, spatial_progress_percentage: float) -> float:
@@ -94,3 +93,24 @@ class TemporalMatch:
             self.match_score = (1.0 - abs(deviation_percentage) / 100.0) * 0.8
 
         return self.match_score
+    
+    def predict_trip_metrics(self, gnss_position: GnssPosition) -> TripMetrics:
+        trip_metrics: TripMetrics = TripMetrics()
+
+        # calculate current spatial progress for further processing
+        position_projection: float = self._trip_shape.project(web_mercator(Point(gnss_position.longitude, gnss_position.latitude)))
+
+        # determine current and next stop index
+        for stop_index, stop_projection in self._stop_projections_on_trip_shape.items():
+            if stop_projection >= position_projection:
+                if stop_index > 0:
+                    trip_metrics.current_stop_id = self._estimated_calls[stop_index - 1]['quay']['id']
+                
+                trip_metrics.next_stop_id = self._estimated_calls[stop_index]['quay']['id']
+
+                break
+
+        # TODO: calculate delay somehow ...
+
+        return trip_metrics
+
