@@ -210,79 +210,94 @@ class IoM:
                 ))
 
     def _handle_message_executor(self, vehicle_ref: str, topic: str, msg: AbstractBasicStructure) -> None:
-        # handle incoming GnssPhysicalPositionData update
-        if isinstance(msg, GnssPhysicalPositionDataStructure):
-            handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
-            result: dict|None = handler.handle(topic, msg)
-
-            if result is not None and result['handler_success']:
-                # load vehicle object in order to check logon status
-                vehicle: dict = self._storage.get_vehicle(vehicle_ref)
-
-                # if the handler found a convergence for a trip ...
-                if result['handler_result'] is not None and 'trip_convergence' in result['handler_result'] and result['handler_result']['trip_convergence']:
-                    
-                    # proceed only if the vehicle is not operationally logged on actually ...
-                    if not vehicle.get('is_operationally_logged_on', False):
-                        trip: dict = result['handler_result']['trip_candidate']
-
-                        logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip['serviceJourney']['id']}. Performing operational log on ...")
-                        
-                        self._storage.update_vehicle(
-                            vehicle_ref,
-                            {'is_operationally_logged_on': True}
-                        )
-
-                        self._storage.update_vehicle_activity(
-                            vehicle_ref,
-                            {
-                                'trip_descriptor': {
-                                    'trip_id': trip['serviceJourney']['id'],
-                                    'route_id': trip['serviceJourney']['journeyPattern']['line']['id'],
-                                    'start_time': get_operation_time(
-                                        trip['date'],
-                                        trip['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
-                                    ),
-                                    'start_date': get_operation_day(trip['date'])
-                                }
-                            }
-                        )
-
-                        self._storage.update_trip(
-                            trip['serviceJourney']['id'],
-                            trip
-                        )
-
-                # if the handler tested a trip and the test failed ...
-                elif result['handler_result'] is not None and 'trip_matching' in result['handler_result'] and not result['handler_result']['trip_matching']:
-                    
-                    # proceed only if the vehicle is operationally logged on to a trip ...
-                    if vehicle.get('is_operationally_logged_on', False):
-                        logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
-                        
-                        self._storage.update_vehicle(
-                            vehicle_ref,
-                            {'is_operationally_logged_on': False}
-                        )
-
-                        self._storage.update_vehicle_activity(
-                            vehicle_ref,
-                            {'trip_descriptor': None}
-                        )
-
-        # after handling release the current vehicle
-        with self._lock:
-            # check whether there're other messages in queue for this vehicle
-            # if so, process them too; else remove the lock from the vehicle
-            if not self._vehicle_queues[vehicle_ref].empty():
-                next_message: tuple = self._vehicle_queues[vehicle_ref].get()
-                self._executor.submit(
-                    self._handle_message_executor,
-                    *next_message
-                )
-            else:
-                self._vehicle_locks[vehicle_ref] = False
         
+        # run this in a separate try-catch clause
+        # as the main thread does not see exceptions occured in ThreadPoolExecutor
+        try:
+            # handle incoming GnssPhysicalPositionData update
+            if isinstance(msg, GnssPhysicalPositionDataStructure):
+                handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
+                result: dict|None = handler.handle(topic, msg)
+
+                if result is not None and result['handler_success']:
+                    # load vehicle object in order to check logon status
+                    vehicle: dict = self._storage.get_vehicle(vehicle_ref)
+
+                    # if the handler found a convergence for a trip ...
+                    if result['handler_result'] is not None and 'trip_convergence' in result['handler_result'] and result['handler_result']['trip_convergence']:
+                        
+                        # proceed only if the vehicle is not operationally logged on actually ...
+                        if not vehicle.get('is_operationally_logged_on', False):
+                            trip: dict = result['handler_result']['trip_candidate']
+
+                            logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip['serviceJourney']['id']}. Performing operational log on ...")
+                            
+                            self._storage.update_vehicle(
+                                vehicle_ref,
+                                {'is_operationally_logged_on': True}
+                            )
+
+                            self._storage.update_vehicle_activity(
+                                vehicle_ref,
+                                {
+                                    'trip_descriptor': {
+                                        'trip_id': trip['serviceJourney']['id'],
+                                        'route_id': trip['serviceJourney']['journeyPattern']['line']['id'],
+                                        'start_time': get_operation_time(
+                                            trip['date'],
+                                            trip['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
+                                        ),
+                                        'start_date': get_operation_day(trip['date'])
+                                    }
+                                }
+                            )
+
+                            self._storage.update_trip(
+                                trip['serviceJourney']['id'],
+                                trip
+                            )
+
+                    # if the handler tested a trip and the test failed ...
+                    elif result['handler_result'] is not None and 'trip_matching' in result['handler_result'] and not result['handler_result']['trip_matching']:
+                        
+                        # proceed only if the vehicle is operationally logged on to a trip ...
+                        if vehicle.get('is_operationally_logged_on', False):
+                            logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
+                            
+                            self._storage.update_vehicle(
+                                vehicle_ref,
+                                {'is_operationally_logged_on': False}
+                            )
+
+                            self._storage.update_vehicle_activity(
+                                vehicle_ref,
+                                {'trip_descriptor': None}
+                            )
+
+            # after handling release the current vehicle
+            with self._lock:
+                # check whether there're other messages in queue for this vehicle
+                # if so, process them too; else remove the lock from the vehicle
+                if not self._vehicle_queues[vehicle_ref].empty():
+                    next_message: tuple = self._vehicle_queues[vehicle_ref].get()
+                    self._executor.submit(
+                        self._handle_message_executor,
+                        *next_message
+                    )
+                else:
+                    self._vehicle_locks[vehicle_ref] = False
+        
+        except Exception as ex:
+            if is_debug():
+                logging.exception(ex)
+            else:
+                logging.error(str(ex))
+
+            # release vehicle lock in case of an exception
+            # other messages may be processed correctly 
+            with self._lock:
+                self._vehicle_locks[vehicle_ref] = False
+
     def _get_tls(self, tls_name: str) -> tuple[str, int]:
         if not tls_name.startswith('_tls_'):
             tls_name = f"_tls_{tls_name}"
