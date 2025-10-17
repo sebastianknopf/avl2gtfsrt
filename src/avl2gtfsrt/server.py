@@ -77,8 +77,11 @@ class GtfsRealtimeServer():
                                 'start_date': vehicle_trip_descriptor['start_date']
                             }
 
-                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_index is not None:
-                                entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_index
+                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_sequence is not None:
+                                entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_sequence
+
+                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.current_stop_status is not None:
+                                entity['vehicle']['currentStatus'] = vehicle_trip_metrics.current_stop_status
 
                             if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
                                 entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
