@@ -9,10 +9,12 @@ from avl2gtfsrt.avl.avlmatcher import AvlMatcher
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.shared import unixtimestamp
+from avl2gtfsrt.iom.basehandler import AbstractHandler
+from avl2gtfsrt.model.serialization import serialize, deserialize
+from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripMetrics
+from avl2gtfsrt.nominal.dataclient import NominalDataClient
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
-from avl2gtfsrt.iom.basehandler import AbstractHandler
-from avl2gtfsrt.nominal.dataclient import NominalDataClient
 
 class GnssPhysicalPositionHandler(AbstractHandler):
 
@@ -140,6 +142,13 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # otherwise increment the counter
                     if trip_matches[current_trip_id]:
                         vehicle_activity['trip_failures'] = 0
+
+                        trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
+                            deserialize(Vehicle, vehicle),
+                            deserialize(GnssPosition, vehicle_activity['gnss_positions'][-1])
+                        )
+
+                        vehicle_activity['trip_metrics'] = serialize(trip_metrics[current_trip_id])
                     else:
                         vehicle_activity['trip_failures'] = vehicle_activity['trip_failures'] + 1
 
