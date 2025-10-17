@@ -24,17 +24,17 @@ class SpatialMatch:
         self.match_score: float = 0.0
         self.spatial_progress_percentage: float|None = None
     
-    def calculate_match_score(self, vehicle_activity: SpatialVectorCollection) -> float:
-        activity_coords: list = [(v.start['longitude'], v.start['latitude']) for v in vehicle_activity.spatial_vectors]
-        activity_coords.append((vehicle_activity.spatial_vectors[-1].end['longitude'], vehicle_activity.spatial_vectors[-1].end['latitude']))
-        activity_coords = [web_mercator(Point(*c)) for c in activity_coords]
+    def calculate_match_score(self, vehicle_movement: SpatialVectorCollection) -> float:
+        movement_coords: list = [(v.start.longitude, v.start.latitude) for v in vehicle_movement.spatial_vectors]
+        movement_coords.append((vehicle_movement.spatial_vectors[-1].end.longitude, vehicle_movement.spatial_vectors[-1].end.latitude))
+        movement_coords = [web_mercator(Point(*c)) for c in movement_coords]
 
         # calculate percentual progress of the trip determined by position
-        self.spatial_progress_percentage = self._trip_shape.project(activity_coords[-1]) / self._trip_shape.length * 100.0
+        self.spatial_progress_percentage = self._trip_shape.project(movement_coords[-1]) / self._trip_shape.length * 100.0
 
         # check if the GNSS coordinate activty matches the trip candidate
-        num_points_matching: int = sum(1 for c in activity_coords if self._buffered_trip_shape.covers(c))
-        num_points_total: int = len(activity_coords)
+        num_points_matching: int = sum(1 for c in movement_coords if self._buffered_trip_shape.covers(c))
+        num_points_total: int = len(movement_coords)
 
         match_ratio: float = num_points_matching / num_points_total if num_points_total > 0 else 0.0
         if match_ratio < self.TRIP_SHAPE_MATCHING_RATIO:
@@ -44,7 +44,7 @@ class SpatialMatch:
 
         # check if the activity runs into the same direction as the trip candidate
         # therefore, a certain proportion of the activity must move forward along the trip shape
-        activity_projections: list = [self._trip_shape.project(c) for c in activity_coords]
+        activity_projections: list = [self._trip_shape.project(c) for c in movement_coords]
 
         num_forward_movements: int = sum(1 for i in range(len(activity_projections) - 1) if activity_projections[i] < activity_projections[i + 1])
         num_backward_movements: int = sum(1 for i in range(len(activity_projections) - 1) if activity_projections[i] > activity_projections[i + 1])

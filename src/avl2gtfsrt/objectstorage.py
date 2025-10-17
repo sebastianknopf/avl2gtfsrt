@@ -4,57 +4,35 @@ from avl2gtfsrt.common.shared import unixtimestamp
 from avl2gtfsrt.model.serialization import serialize, deserialize
 from avl2gtfsrt.model.types import *
 
+
 class ObjectStorage:
     def __init__(self, username: str, password: str, db_name: str = 'avl2gtfsrt'):
         self._mdb = MongoClient(f"mongodb://{username}:{password}@mongodb:27017/?authSource=admin")
 
         self._db = self._mdb[db_name]
 
-    def get_vehicles(self) -> list:
-        return list(self._db.vehicles.find({}))
+    def get_vehicles(self) -> list[Vehicle]:
+        data: list = list(self._db.vehicles.find({}))
+
+        return [deserialize(Vehicle, v) for v in data]
     
     def get_vehicle(self, vehicle_ref: str) -> dict|None:
-        vehicle = self._db.vehicles.find_one({'vehicle_ref': vehicle_ref})
-        return vehicle
+        data: dict = self._db.vehicles.find_one({'vehicle_ref': vehicle_ref})
+        
+        return deserialize(Vehicle, data) if data is not None else None
     
-    def update_vehicle(self, vehicle_ref: str, data: dict) -> None:
+    def update_vehicle(self, vehicle: Vehicle) -> None:
+        if vehicle.activity is not None:
+            vehicle.activity = self._cleanup_vehicle_activity_gnss(vehicle.activity)
+        
+        data: dict = serialize(vehicle)
+        vehicle_ref: str = data['vehicle_ref']
+ 
         self._db.vehicles.update_one(
             {'vehicle_ref': vehicle_ref},
             {'$set': data},
             upsert=True
         )
-
-    def get_vehicle_position(self, vehicle_ref: str) -> dict|None:
-        vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-        return vehicle_activity['gnss_positions'][-1] if vehicle_activity is not None and len(vehicle_activity['gnss_positions']) > 0 else None
-
-    def get_vehicle_trip_descriptor(self, vehicle_ref: str) -> dict|None:
-        vehicle_activity: dict = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-        return vehicle_activity['trip_descriptor'] if vehicle_activity is not None else None
-    
-    def get_vehicle_trip_metrics(self, vehicle_ref: str) -> TripMetrics|None:
-        data: dict = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-        vehicle_activity: VehicleActivity = deserialize(VehicleActivity, data)
-
-        return vehicle_activity.trip_metrics if vehicle_activity is not None else None
-
-    def get_vehicle_activity(self, vehicle_ref: str) -> dict|None:
-        vehicle_activity = self._db.vehicle_activities.find_one({'vehicle_ref': vehicle_ref})
-        vehicle_activity = self._cleanup_vehicle_activity_gnss(vehicle_activity)
-
-        return vehicle_activity
-    
-    def update_vehicle_activity(self, vehicle_ref: str, data: dict) -> None:
-        data = self._cleanup_vehicle_activity_gnss(data)        
-        
-        self._db.vehicle_activities.update_one(
-            {'vehicle_ref': vehicle_ref},
-            {'$set': data},
-            upsert=True
-        )
-
-    def delete_vehicle_activity(self, vehicle_ref: str) -> None:
-        self._db.vehicle_activities.delete_one({'vehicle_ref': vehicle_ref})
 
     def get_trips(self) -> dict:
         return list(self._db.trips.find({}))
@@ -70,28 +48,26 @@ class ObjectStorage:
             upsert=True
         )
 
-    def _cleanup_vehicle_activity_gnss(self, data: dict) -> dict:
+    def _cleanup_vehicle_activity_gnss(self, activity: VehicleActivity) -> VehicleActivity:
         
         # reduce last positions to the latest 10 elements
         # remove also positions if they are older than 5 minutes
-        if data is not None and 'gnss_positions' in data:
+        # define variables for cleaning up
+        gnss_max_age_seconds: int = 60
 
-            # define variables for cleaning up
-            gnss_max_age_seconds: int = 60
+        # remove all GNSS positions which are older than 60s
+        current_timestamp: int = unixtimestamp()
+        updated_gnss_positions: list[GnssPosition] = list()
+        for gnss_position in activity.gnss_positions:
+            if gnss_position.timestamp > current_timestamp - gnss_max_age_seconds:
+                updated_gnss_positions.append(gnss_position)
 
-            # remove all GNSS positions which are older than 60s
-            current_timestamp: int = unixtimestamp()
-            updated_gnss_positions: list[dict] = []
-            for gnss_position in data['gnss_positions']:
-                if gnss_position['timestamp'] > current_timestamp - gnss_max_age_seconds:
-                    updated_gnss_positions.append(gnss_position)
+        activity.gnss_positions = updated_gnss_positions
 
-            data['gnss_positions'] = updated_gnss_positions
+        # restrict to a maximum of 12 GNSS positions totally
+        activity.gnss_positions = activity.gnss_positions[-12:]
 
-            # restrict to a maximum of 12 GNSS positions totally
-            data['gnss_positions'] = data['gnss_positions'][-12:]
-
-        return data
+        return activity
 
     def close(self):
         self._mdb.close()

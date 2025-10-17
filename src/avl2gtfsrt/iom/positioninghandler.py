@@ -9,23 +9,24 @@ from avl2gtfsrt.avl.avlmatcher import AvlMatcher
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.shared import unixtimestamp
+from avl2gtfsrt.common.datetime import get_operation_day, get_operation_time
 from avl2gtfsrt.iom.basehandler import AbstractHandler
-from avl2gtfsrt.model.serialization import serialize, deserialize
-from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripMetrics
+from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripDescriptor, TripMetrics
 from avl2gtfsrt.nominal.dataclient import NominalDataClient
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
 
+
 class GnssPhysicalPositionHandler(AbstractHandler):
 
-    def handle(self, topic: str, msg: AbstractBasicStructure) -> dict|None:
+    def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
         msg = cast(GnssPhysicalPositionDataStructure, msg)
 
         vehicle_ref: str = get_tls_value(topic, 'Vehicle')
 
         # verify that the vehicle is technically logged on
-        vehicle: dict = self._object_storage.get_vehicle(vehicle_ref)
-        if vehicle is None or not vehicle.get('is_technically_logged_on', False):
+        vehicle: Vehicle = self._storage.get_vehicle(vehicle_ref)
+        if vehicle is None or not vehicle.is_technically_logged_on:
             logging.error(f"Vehicle {vehicle_ref} is not technically logged on.")
             return
 
@@ -42,38 +43,31 @@ class GnssPhysicalPositionHandler(AbstractHandler):
             return
 
         # update vehicle activity data
-        vehicle_activity: dict = self._object_storage.get_vehicle_activity(vehicle_ref)
-        if vehicle_activity is None:
-            vehicle_activity = {
-                'vehicle_ref': vehicle_ref,
-                'gnss_positions': []
-            }
+        vehicle.activity.gnss_positions.append(GnssPosition(
+            timestamp=timestamp,
+            latitude=latitude,
+            longitude=longitude
+        ))
 
-        vehicle_activity['gnss_positions'].append({
-            'timestamp': timestamp,
-            'latitude': latitude,
-            'longitude': longitude
-        })
-
-        self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+        self._storage.update_vehicle(vehicle)
 
         logging.info(f"{self.__class__.__name__}: Processed GNSS data update for vehicle {vehicle_ref} successfully.")
 
         # run all other processing steps
         
         # check whether AVL processing is enabled
-        if len(vehicle_activity['gnss_positions']) > 1:
-            activity: SpatialVectorCollection = SpatialVectorCollection(vehicle_activity['gnss_positions'])
+        if len(vehicle.activity.gnss_positions) > 1:
+            gnss_vector: SpatialVectorCollection = SpatialVectorCollection(vehicle.activity.gnss_positions)
 
             # matching is only possible if the vehicle is moving
             # remember: we need at sequence of movement coordinates to match the trip!
-            if activity.is_movement():
+            if gnss_vector.is_movement():
 
                 # check if the vehicle is not operationally logged on
                 # request all possible trip candidates in that case
                 # otherwise check whether the vehicle is still on the trip which
                 # was logged on before
-                if not vehicle.get('is_operationally_logged_on', False):
+                if not vehicle.is_operationally_logged_on:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is not operationally logged on. Loading nominal trip candidates ...")
 
                     client: NominalDataClient = NominalDataClient(
@@ -84,94 +78,103 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
 
                     matcher: AvlMatcher = AvlMatcher(
-                        self._object_storage,
+                        self._storage,
                         trip_candidates
                     )
                     
                     result: tuple[bool, dict] = matcher.match(
                         vehicle, 
-                        vehicle_activity['gnss_positions'],
-                        vehicle_activity.get('trip_candidate_probabilities', None)
+                        vehicle.activity.gnss_positions,
+                        vehicle.activity.trip_candidate_probabilities
                     )
 
                     trip_candidate_convergence: bool = result[0]
                     trip_candidate_probabilities: dict = result[1]
 
                     # save trip candidate scores to vehicle activity
-                    vehicle_activity['trip_candidate_convergence'] = trip_candidate_convergence
-                    vehicle_activity['trip_candidate_probabilities'] = trip_candidate_probabilities
+                    vehicle.activity.trip_candidate_convergence = trip_candidate_convergence
+                    vehicle.activity.trip_candidate_probabilities = trip_candidate_probabilities
 
-                    self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+                    self._storage.update_vehicle(vehicle)
 
                     # return result
                     # (bool, (bool, object)) <--- (Success/Failure of the Handler, (TripConvergence, TripObject))
                     if trip_candidate_convergence:
                         trip_candidate_id: str = max(trip_candidate_probabilities, key=trip_candidate_probabilities.get)
                         trip_candidate: dict|None = next((t for t in trip_candidates if t['serviceJourney']['id'] == trip_candidate_id), None)
-                    else:
-                        trip_candidate: dict|None = None
-                    
-                    return {
-                        'handler_success': True,
-                        'handler_result': {
-                            'trip_convergence': trip_candidate_convergence,
-                            'trip_candidate': trip_candidate
-                        }
-                    }
+
+                        if not vehicle.is_operationally_logged_on:
+                            logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip_candidate['serviceJourney']['id']}. Performing operational log on ...")
+                            
+                            # update vehicle status and trip descriptor
+                            vehicle.is_operationally_logged_on = True
+
+                            vehicle.activity.trip_descriptor = TripDescriptor(
+                                trip_id = trip_candidate['serviceJourney']['id'],
+                                route_id = trip_candidate['serviceJourney']['journeyPattern']['line']['id'],
+                                start_time = get_operation_time(
+                                    trip_candidate['date'],
+                                    trip_candidate['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
+                                ),
+                                start_date = get_operation_day(trip_candidate['date'])
+                            )
+                            
+                            # predict trip metrics
+                            trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
+                                vehicle,
+                                vehicle.activity.gnss_positions[-1]
+                            )
+
+                            vehicle.activity.trip_metrics = trip_metrics[trip_candidate_id]
+
+                            # finally update vehicle data
+                            self._storage.update_vehicle(vehicle)
+
+                            self._storage.update_trip(
+                                trip_candidate['serviceJourney']['id'],
+                                trip_candidate
+                            )
+                            
                 else:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is operationally logged on. Verifying current trip ...")
                     
-                    current_trip_id: str = vehicle_activity['trip_descriptor']['trip_id']
-                    current_trip: dict = self._object_storage.get_trip(current_trip_id)
+                    current_trip_id: str = vehicle.activity.trip_descriptor.trip_id
+                    current_trip: dict = self._storage.get_trip(current_trip_id)
 
                     matcher: AvlMatcher = AvlMatcher(
-                        self._object_storage,
+                        self._storage,
                         [current_trip]
                     )
 
                     trip_matches: dict[str, bool] = matcher.test(
                         vehicle,
-                        vehicle_activity['gnss_positions']
+                        vehicle.activity.gnss_positions
                     )
 
-                    # update vehicle activity ...
-                    if 'trip_failures' not in vehicle_activity:
-                        vehicle_activity['trip_failures'] = 0
-                    
+                    # update vehicle activity ...                    
                     # if the trip matches, reset failure counter
                     # otherwise increment the counter
                     if trip_matches[current_trip_id]:
-                        vehicle_activity['trip_failures'] = 0
+                        vehicle.activity.trip_candidate_failures = 0
 
                         trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
-                            deserialize(Vehicle, vehicle),
-                            deserialize(GnssPosition, vehicle_activity['gnss_positions'][-1])
+                            vehicle,
+                            vehicle.activity.gnss_positions[-1]
                         )
 
-                        vehicle_activity['trip_metrics'] = serialize(trip_metrics[current_trip_id])
+                        vehicle.activity.trip_metrics = trip_metrics[current_trip_id]
                     else:
-                        vehicle_activity['trip_failures'] = vehicle_activity['trip_failures'] + 1
+                        vehicle.activity.trip_candidate_failures = vehicle.activity.trip_candidate_failures + 1
 
-                    self._object_storage.update_vehicle_activity(vehicle_ref, vehicle_activity)
+                    self._storage.update_vehicle(vehicle)
                     
-                    # if there're not too many failures, return a positive result
-                    # otherwise - OMG - a negative result
-                    if vehicle_activity['trip_failures'] < 4:
-                        return {
-                            'handler_success': True,
-                            'handler_result': {
-                                'trip_matching': True
-                            }
-                        }
-                    else:
-                        return {
-                            'handler_success': True,
-                            'handler_result': {
-                                'trip_matching': False
-                            }
-                        }
-                    
-        return {
-            'handler_success': True,
-            'handler_result': None
-        }
+                    # if there're too many failures, perform a log off and delete trip descriptor
+                    if vehicle.activity.trip_candidate_failures >= 4:
+                        if vehicle.is_operationally_logged_on:
+                            logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
+                            
+                            vehicle.is_operationally_logged_on = False
+                            vehicle.activity.trip_descriptor = None
+                            vehicle.activity.trip_metrics = None
+
+                            self._storage.update_vehicle(vehicle)

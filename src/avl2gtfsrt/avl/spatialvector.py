@@ -1,12 +1,11 @@
 import math
 
-from shapely.geometry import LineString
-from shapely.ops import transform
-from pyproj import CRS, Transformer
+from avl2gtfsrt.model.types import GnssPosition
+
 
 class SpatialVector:
 
-    def __init__(self, gnss_position_start: dict[str, any], gnss_position_end: dict[str, any]):
+    def __init__(self, gnss_position_start: GnssPosition, gnss_position_end: GnssPosition):
         self.start = gnss_position_start
         self.end = gnss_position_end
 
@@ -16,8 +15,8 @@ class SpatialVector:
     def length(self) -> float:
         if self._cached_length is None:
             self._cached_length = self._haversine_distance(
-                (self.start['latitude'], self.start['longitude']),
-                (self.end['latitude'], self.end['longitude'])
+                (self.start.latitude, self.start.longitude),
+                (self.end.latitude, self.end.longitude)
             )
         
         return self._cached_length
@@ -25,8 +24,8 @@ class SpatialVector:
     def bearing(self) -> float:
         if self._cached_bearing is None:
             self._cached_bearing = self._calculate_bearing(
-                (self.start['latitude'], self.start['longitude']),
-                (self.end['latitude'], self.end['longitude'])
+                (self.start.latitude, self.start.longitude),
+                (self.end.latitude, self.end.longitude)
             )
 
         return self._cached_bearing
@@ -60,15 +59,15 @@ class SpatialVector:
 
 class SpatialVectorCollection:
 
-    def __init__(self, gnss_positions: list[dict[str, any]]) -> None:
+    def __init__(self, gnss_positions: list[GnssPosition]) -> None:
         self.spatial_vectors: list[SpatialVector] = []
 
         if len(gnss_positions) < 2:
             raise ValueError('At least 2 GNSS positions are required for creating a vector or vector collection!')
 
         for p in range(0, len(gnss_positions) - 1):
-            pos1: dict[str, any] = gnss_positions[p]
-            pos2: dict[str, any] = gnss_positions[p + 1]
+            pos1: GnssPosition = gnss_positions[p]
+            pos2: GnssPosition = gnss_positions[p + 1]
 
             self.spatial_vectors.append(
                 SpatialVector(pos1, pos2)

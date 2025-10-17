@@ -8,6 +8,8 @@ from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, Te
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
 from avl2gtfsrt.iom.basehandler import AbstractRequestResponseHandler
+from avl2gtfsrt.model.types import Vehicle, VehicleActivity
+
 
 class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
     def handle_request(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
@@ -15,13 +17,15 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
         
         vehicle_ref: str = msg.vehicle_ref.value
 
-        vehicle = self._object_storage.get_vehicle(vehicle_ref)
-        if vehicle is None or vehicle is not None and not vehicle.get('is_technically_logged_on', False):
-            self._object_storage.update_vehicle(vehicle_ref, {
-                'is_technically_logged_on': True
-            })
+        vehicle: Vehicle = self._storage.get_vehicle(vehicle_ref)
+        if vehicle is None:
+            vehicle = Vehicle(vehicle_ref=vehicle_ref)
 
-            self._object_storage.delete_vehicle_activity(vehicle_ref)
+        if not vehicle.is_technically_logged_on:
+            vehicle.is_technically_logged_on = True
+            vehicle.activity = VehicleActivity()
+
+            self._storage.update_vehicle(vehicle)
 
             response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
             response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
@@ -46,17 +50,13 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
         
         vehicle_ref: str = msg.vehicle_ref.value
 
-        vehicle = self._object_storage.get_vehicle(vehicle_ref)
-        if vehicle is not None and vehicle.get('is_technically_logged_on', False):
-            self._object_storage.update_vehicle(
-                vehicle_ref,
-                {
-                    'is_technically_logged_on': False,
-                    'is_operationally_logged_on': False
-                }
-            )
+        vehicle: Vehicle = self._storage.get_vehicle(vehicle_ref)
+        if vehicle.is_technically_logged_on:
+            vehicle.is_operationally_logged_on = False
+            vehicle.is_technically_logged_on = False
+            vehicle.activity = None
 
-            self._object_storage.delete_vehicle_activity(vehicle_ref)
+            self._storage.update_vehicle(vehicle)
 
             response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
             response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()

@@ -16,9 +16,9 @@ from google.protobuf.json_format import ParseDict
 from math import floor
 
 from avl2gtfsrt.common.shared import strip_feed_id
-from avl2gtfsrt.model.serialization import deserialize
-from avl2gtfsrt.model.types import TripMetrics
+from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripDescriptor, TripMetrics
 from avl2gtfsrt.objectstorage import ObjectStorage
+
 
 class GtfsRealtimeServer():
     
@@ -47,44 +47,44 @@ class GtfsRealtimeServer():
     async def _vehicle_positions(self, request: Request) -> Response:
         entities: list[dict] = list()
         
-        vehicles: list = self._object_storage.get_vehicles()
+        vehicles: list[Vehicle] = self._object_storage.get_vehicles()
         for vehicle in vehicles:
-            if vehicle.get('is_technically_logged_on', False):
-                vehicle_position: dict = self._object_storage.get_vehicle_position(vehicle.get('vehicle_ref'))
+            if vehicle.is_technically_logged_on:
+                vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if len(vehicle.activity.gnss_positions) > 0 else None
                 if vehicle_position is not None:
                     entity: dict = {
                         'id': str(uuid.uuid4()),
                         'vehicle': {
-                            'timestamp': vehicle_position['timestamp'], 
+                            'timestamp': vehicle_position.timestamp, 
                             'vehicle': {
-                                'id': vehicle.get('vehicle_ref')
+                                'id': vehicle.vehicle_ref
                             },
                             'position': {
-                                'latitude': vehicle_position['latitude'],
-                                'longitude': vehicle_position['longitude']
+                                'latitude': vehicle_position.latitude,
+                                'longitude': vehicle_position.longitude
                             }
                         }
                     }
 
-                    if vehicle.get('is_operationally_logged_on', False):
-                        vehicle_trip_descriptor: dict = self._object_storage.get_vehicle_trip_descriptor(vehicle.get('vehicle_ref'))
-                        vehicle_trip_metrics: TripMetrics = self._object_storage.get_vehicle_trip_metrics(vehicle.get('vehicle_ref'))
+                    if vehicle.is_operationally_logged_on:                        
+                        vehicle_trip_descriptor: TripDescriptor = vehicle.activity.trip_descriptor
                         if vehicle_trip_descriptor is not None:
                             entity['vehicle']['trip'] = {
-                                'trip_id': strip_feed_id(vehicle_trip_descriptor['trip_id']),
-                                'route_id': strip_feed_id(vehicle_trip_descriptor['route_id']),
-                                'start_time': vehicle_trip_descriptor['start_time'],
-                                'start_date': vehicle_trip_descriptor['start_date']
+                                'trip_id': strip_feed_id(vehicle_trip_descriptor.trip_id),
+                                'route_id': strip_feed_id(vehicle_trip_descriptor.route_id),
+                                'start_time': vehicle_trip_descriptor.start_time,
+                                'start_date': vehicle_trip_descriptor.start_date
                             }
 
-                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_sequence is not None:
-                                entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_sequence
+                        vehicle_trip_metrics: TripMetrics = vehicle.activity.trip_metrics
+                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_sequence is not None:
+                            entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_sequence
 
-                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.current_stop_status is not None:
-                                entity['vehicle']['currentStatus'] = vehicle_trip_metrics.current_stop_status
+                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.current_stop_status is not None:
+                            entity['vehicle']['currentStatus'] = vehicle_trip_metrics.current_stop_status
 
-                            if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
-                                entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
+                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
+                            entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
             
                     entities.append(entity)
 
