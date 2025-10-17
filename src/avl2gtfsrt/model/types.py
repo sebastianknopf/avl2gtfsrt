@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+from typing import List, Optional
 
 @dataclass
 class GnssPosition:
@@ -16,21 +17,21 @@ class Vehicle:
 @dataclass
 class VehicleActivity:
     vehicle_ref: str
-    gnss_positions: list[GnssPosition] = field(default_factory=list)
-    trip_descriptor: TripDescriptor|None = None
-    trip_metrics: TripMetrics|None = None
+    gnss_positions: List[GnssPosition] = field(default_factory=List)
+    trip_descriptor: Optional[TripDescriptor] = None
+    trip_metrics: Optional[TripMetrics] = None
 
 @dataclass
 class TripDescriptor:
-    trip_id: str|None = None
-    route_id: str|None = None
-    direction_id: str|None = None
-    start_date: str|None = None
-    start_time: str|None = None
-    schedule_relationship: str|None = None
+    trip_id: Optional[str] = None
+    route_id: Optional[str] = None
+    direction_id: Optional[str] = None
+    start_date: Optional[str] = None
+    start_time: Optional[str] = None
+    schedule_relationship: Optional[str] = None
 
 @dataclass
 class TripMetrics:
-    current_stop_id: str|None = None
-    next_stop_id: str|None = None
-    delay: int|None = None
+    current_stop_id: Optional[str] = None
+    next_stop_id: Optional[str] = None
+    delay: Optional[str] = None
