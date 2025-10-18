@@ -89,8 +89,8 @@ class OtpAdapter(BaseAdapter):
                 stop_times: list[StopTime] = list()
                 for std in td['serviceJourney']['estimatedCalls']:
                     stop_time: StopTime = StopTime(
-                        arrival_timestamp=datetime.fromisoformat(std['aimedDepartureTime'] if 'aimedDepartureTime' in std else std['aimedArrivalTime']).timestamp(),
-                        departure_timestamp=datetime.fromisoformat(std['aimedDepartureTime'] if 'aimedDepartureTime' in std else std['aimedArrivalTime']).timestamp(),
+                        arrival_timestamp=int(datetime.fromisoformat(std['aimedDepartureTime'] if 'aimedDepartureTime' in std else std['aimedArrivalTime']).timestamp()),
+                        departure_timestamp=int(datetime.fromisoformat(std['aimedDepartureTime'] if 'aimedDepartureTime' in std else std['aimedArrivalTime']).timestamp()),
                         stop_sequence=std['stopPositionInPattern'],
                         stop=Stop(
                             stop_id=std['quay']['id'],

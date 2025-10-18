@@ -16,7 +16,7 @@ class ObjectStorage:
 
         return [deserialize(Vehicle, v) for v in data]
     
-    def get_vehicle(self, vehicle_ref: str) -> dict|None:
+    def get_vehicle(self, vehicle_ref: str) -> Vehicle|None:
         data: dict = self._db.vehicles.find_one({'vehicle_ref': vehicle_ref})
         
         return deserialize(Vehicle, data) if data is not None else None
@@ -34,16 +34,22 @@ class ObjectStorage:
             upsert=True
         )
 
-    def get_trips(self) -> dict:
-        return list(self._db.trips.find({}))
+    def get_trips(self) -> list[Trip]:
+        data: list = list(self._db.trips.find({}))
+
+        return [deserialize(Trip, t) for t in data]
     
-    def get_trip(self, trip_id: str) -> dict|None:
-        trip = self._db.trips.find_one({'trip_id': trip_id})
-        return trip
+    def get_trip(self, trip_id: str) -> Trip|None:
+        data: dict = self._db.trips.find_one({'descriptor.trip_id': trip_id})
+        
+        return deserialize(Trip, data) if data is not None else None
     
-    def update_trip(self, trip_id: str, data: dict) -> None:
+    def update_trip(self, trip: Trip) -> None:        
+        data: dict = serialize(trip)
+        trip_id: str = data['descriptor']['trip_id']
+ 
         self._db.trips.update_one(
-            {'trip_id': trip_id},
+            {'descriptor.trip_id': trip_id},
             {'$set': data},
             upsert=True
         )

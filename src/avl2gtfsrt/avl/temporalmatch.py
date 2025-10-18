@@ -4,27 +4,22 @@ from datetime import datetime, timezone
 from shapely.geometry import LineString, Point
 
 from avl2gtfsrt.common.shared import web_mercator, clamp
-from avl2gtfsrt.model.types import GnssPosition, TripMetrics
+from avl2gtfsrt.model.types import GnssPosition, StopTime, TripMetrics
 
 
 class TemporalMatch:
 
     MAX_DEVIATION_PERCENTAGE: float = 30.0
 
-    def __init__(self, calls: list, trip_shape: LineString) -> None:
+    def __init__(self, stop_times: list[StopTime], trip_shape: LineString) -> None:
 
-        # store estimated calls for further processing
-        # check that they're estimated calls available for this trip
-        self._calls: list = calls
-
-        if len(self._calls) == 0:
-            self.time_based_progress_percentage = 0.0
-            return
+        # store stop times for further processing
+        self._stop_times: list[StopTime] = stop_times
 
         # transform shape of the trip candidate into a LineString
         self._trip_shape: LineString = trip_shape
 
-        self._stop_projections_on_trip_shape: dict = {c['stopPositionInPattern']: self._trip_shape.project(web_mercator(Point(c['quay']['longitude'], c['quay']['latitude']))) for c in calls}
+        self._stop_projections_on_trip_shape: dict = {s.stop_sequence: self._trip_shape.project(web_mercator(Point(s.stop.longitude, s.stop.latitude))) for s in self._stop_times}
 
         # containers for later calculated data
         self.time_based_progress_percentage: float = 0.0
@@ -34,8 +29,8 @@ class TemporalMatch:
         current_timestamp: int = int(datetime.now(timezone.utc).replace(microsecond=0, second=0).timestamp())
 
         # check whether the trip should run currently
-        first_departure: int = int(datetime.fromisoformat(self._calls[0]['aimedDepartureTime'] if 'aimedDepartureTime' in self._calls[0] else self._calls[0]['aimedArrivalTime']).timestamp())
-        last_departure: int = int(datetime.fromisoformat(self._calls[-1]['aimedDepartureTime'] if 'aimedDepartureTime' in self._calls[-1] else self._calls[-1]['aimedArrivalTime']).timestamp())
+        first_departure: int = self._stop_times[0].departure_timestamp
+        last_departure: int = self._stop_times[-1].departure_timestamp
 
         if current_timestamp < first_departure:
             self.time_based_progress_percentage = 0.0
@@ -50,13 +45,13 @@ class TemporalMatch:
             return
 
         # calculate the current percentual progress of the trip 
-        # based on times of estimated calls
-        for c in range(0, len(self._calls) - 1):
-            this_call: dict = self._calls[c]
-            next_call: dict = self._calls[c + 1]
+        # based on times of stop times
+        for c in range(0, len(self._stop_times) - 1):
+            this_stop_time: StopTime = self._stop_times[c]
+            next_stop_time: StopTime = self._stop_times[c + 1]
 
-            this_departure: int = int(datetime.fromisoformat(this_call['aimedDepartureTime'] if 'aimedDepartureTime' in this_call else this_call['aimedArrivalTime']).timestamp())
-            next_departure: int = int(datetime.fromisoformat(next_call['aimedDepartureTime'] if 'aimedDepartureTime' in next_call else next_call['aimedArrivalTime']).timestamp())
+            this_departure: int = this_stop_time.departure_timestamp
+            next_departure: int = next_stop_time.departure_timestamp
 
             # if the current timestamp is on/bewteen two stops
             if this_departure <= current_timestamp <= next_departure:
@@ -68,14 +63,14 @@ class TemporalMatch:
                 time_based_progress: float = (this_duration / next_duration) if next_duration > 0.0 else 1.0
 
                 # calculate the projection length based on the time-based progress
-                this_projection: float = self._stop_projections_on_trip_shape[this_call['stopPositionInPattern']]
-                next_projection: float = self._stop_projections_on_trip_shape[next_call['stopPositionInPattern']]
+                this_projection: float = self._stop_projections_on_trip_shape[this_stop_time.stop_sequence]
+                next_projection: float = self._stop_projections_on_trip_shape[next_stop_time.stop_sequence]
                 
                 self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
 
-                self.time_based_current_stop_sequence: int = this_call['stopPositionInPattern']
-                self.time_based_next_stop_sequence: int = next_call['stopPositionInPattern']
+                self.time_based_current_stop_sequence: int = this_stop_time.stop_sequence
+                self.time_based_next_stop_sequence: int = next_stop_time.stop_sequence
                 
                 break        
 
@@ -115,7 +110,7 @@ class TemporalMatch:
         position_projection: float = self._trip_shape.project(web_mercator(Point(gnss_position.longitude, gnss_position.latitude)))
 
         # determine current and next stop index
-        for stop_index, stop_projection in self._stop_projections_on_trip_shape.items():
+        for stop_sequence, stop_projection in self._stop_projections_on_trip_shape.items():
             if stop_projection >= position_projection:
                 # calculate distance to the next stop and predict stop status
                 distance: float = stop_projection - position_projection
@@ -125,24 +120,21 @@ class TemporalMatch:
                     trip_metrics.current_stop_status = 'INCOMING_AT'
 
                 # set current and next stop sequence and ID
-                if stop_index > 0:
-                    trip_metrics.current_stop_sequence = stop_index - 1
-                    trip_metrics.current_stop_id = self._calls[stop_index - 1]['quay']['id']
+                if stop_sequence > 0:
+                    trip_metrics.current_stop_sequence = stop_sequence - 1
+                    trip_metrics.current_stop_id = self._stop_times[stop_sequence - 1].stop.stop_id
                 
-                trip_metrics.next_stop_sequence = stop_index
-                trip_metrics.next_stop_id = self._calls[stop_index]['quay']['id']
+                trip_metrics.next_stop_sequence = stop_sequence
+                trip_metrics.next_stop_id = self._stop_times[stop_sequence].stop.stop_id
 
                 # monitor delay between nominal next stop and AVL-based next stop
                 # calculate the difference based on the departure times
                 # TODO: implement a better delay prediciton here ... this is quite... basic
-                actual_next_call: dict|None = next((c for c in self._calls if c['stopPositionInPattern'] == trip_metrics.next_stop_sequence), None)
-                nominal_next_call: dict|None = next((c for c in self._calls if c['stopPositionInPattern'] == self.time_based_next_stop_sequence), None)
+                actual_next_stop_time: StopTime|None = next((s for s in self._stop_times if s.stop_sequence == trip_metrics.next_stop_sequence), None)
+                nominal_next_stop_time: StopTime|None = next((s for s in self._stop_times if s.stop_sequence == self.time_based_next_stop_sequence), None)
                 
-                if actual_next_call is not None and nominal_next_call is not None:
-                    actual_next_departure: int = int(datetime.fromisoformat(actual_next_call['aimedDepartureTime'] if 'aimedDepartureTime' in actual_next_call else actual_next_call['aimedArrivalTime']).timestamp())
-                    nominal_next_departure: int = int(datetime.fromisoformat(nominal_next_call['aimedDepartureTime'] if 'aimedDepartureTime' in nominal_next_call else nominal_next_call['aimedArrivalTime']).timestamp())
-
-                    trip_metrics.current_delay = int(nominal_next_departure - actual_next_departure)
+                if actual_next_stop_time is not None and nominal_next_stop_time is not None:
+                    trip_metrics.current_delay = int(nominal_next_stop_time.departure_timestamp - actual_next_stop_time.departure_timestamp)
 
                 break
 

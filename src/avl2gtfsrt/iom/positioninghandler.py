@@ -9,9 +9,8 @@ from avl2gtfsrt.avl.avlmatcher import AvlMatcher
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.shared import unixtimestamp
-from avl2gtfsrt.common.datetime import get_operation_day, get_operation_time
 from avl2gtfsrt.iom.basehandler import AbstractHandler
-from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripDescriptor, TripMetrics
+from avl2gtfsrt.model.types import Trip, GnssPosition, Vehicle, TripMetrics
 from avl2gtfsrt.nominal.dataclient import NominalDataClient
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
@@ -75,7 +74,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                         json.loads(os.getenv('A2G_NOMINAL_ADAPTER_CONFIG'))
                     )
 
-                    trip_candidates: list[dict] = client.get_trip_candidates(latitude, longitude)
+                    trip_candidates: list[Trip] = client.get_trip_candidates(latitude, longitude)
 
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
@@ -101,23 +100,15 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # (bool, (bool, object)) <--- (Success/Failure of the Handler, (TripConvergence, TripObject))
                     if trip_candidate_convergence:
                         trip_candidate_id: str = max(trip_candidate_probabilities, key=trip_candidate_probabilities.get)
-                        trip_candidate: dict|None = next((t for t in trip_candidates if t['serviceJourney']['id'] == trip_candidate_id), None)
+                        trip_candidate: Trip|None = next((t for t in trip_candidates if t.descriptor.trip_id == trip_candidate_id), None)
 
                         if not vehicle.is_operationally_logged_on:
-                            logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip_candidate['serviceJourney']['id']}. Performing operational log on ...")
+                            logging.info(f"{self.__class__.__name__}: Vehicle matched to trip {trip_candidate.descriptor.trip_id}. Performing operational log on ...")
                             
                             # update vehicle status and trip descriptor
                             vehicle.is_operationally_logged_on = True
 
-                            vehicle.activity.trip_descriptor = TripDescriptor(
-                                trip_id = trip_candidate['serviceJourney']['id'],
-                                route_id = trip_candidate['serviceJourney']['journeyPattern']['line']['id'],
-                                start_time = get_operation_time(
-                                    trip_candidate['date'],
-                                    trip_candidate['serviceJourney']['estimatedCalls'][0]['aimedDepartureTime']
-                                ),
-                                start_date = get_operation_day(trip_candidate['date'])
-                            )
+                            vehicle.activity.trip_descriptor = trip_candidate.descriptor
                             
                             # predict trip metrics
                             trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
@@ -130,16 +121,13 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             # finally update vehicle data
                             self._storage.update_vehicle(vehicle)
 
-                            self._storage.update_trip(
-                                trip_candidate['serviceJourney']['id'],
-                                trip_candidate
-                            )
+                            self._storage.update_trip(trip_candidate)
                             
                 else:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is operationally logged on. Verifying current trip ...")
                     
                     current_trip_id: str = vehicle.activity.trip_descriptor.trip_id
-                    current_trip: dict = self._storage.get_trip(current_trip_id)
+                    current_trip: Trip = self._storage.get_trip(current_trip_id)
 
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,

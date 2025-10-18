@@ -41,8 +41,8 @@ class StopTime:
 @dataclass
 class Trip:
     descriptor: TripDescriptor
-    stop_times: list[StopTime] = field(default_factory=list)
     shape_polyline: str
+    stop_times: list[StopTime] = field(default_factory=list)
 
 @dataclass
 class TripDescriptor:

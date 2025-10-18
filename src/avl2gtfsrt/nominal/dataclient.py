@@ -1,6 +1,7 @@
 import logging
 
 from avl2gtfsrt.common.env import is_debug
+from avl2gtfsrt.model.types import Trip
 from avl2gtfsrt.nominal.baseadapter import BaseAdapter
 
 
@@ -10,12 +11,12 @@ class NominalDataClient:
         self._adapter_type = adapter_type
         self._adapter_config = adapter_config
 
-    def get_trip_candidates(self, latitude: float, longitude: float) -> list[dict]:
+    def get_trip_candidates(self, latitude: float, longitude: float) -> list[Trip]|None:
         adapter: BaseAdapter = self._get_configured_adapter()
 
         try:
             logging.info(f"{self.__class__.__name__}: Loading trip candidates with adapter of type {self._adapter_type} ...")
-            result: dict = adapter.get_trip_candidates(latitude, longitude)
+            result: list[Trip] = adapter.get_trip_candidates(latitude, longitude)
 
             return result
         
@@ -24,6 +25,8 @@ class NominalDataClient:
                 logging.exception(ex)
             else:
                 logging.error(str(ex))
+
+            return None
 
     def _get_configured_adapter(self) -> BaseAdapter:
         adapter: BaseAdapter = None
