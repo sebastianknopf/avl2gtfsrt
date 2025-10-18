@@ -25,6 +25,26 @@ class VehicleActivity:
     trip_metrics: Optional[TripMetrics] = None
 
 @dataclass
+class Stop:
+    stop_id: str
+    latitude: float
+    longitude: float
+    name: Optional[str] = None
+
+@dataclass
+class StopTime:
+    arrival_timestamp: int 
+    departure_timestamp: int
+    stop_sequence: int
+    stop: Stop
+
+@dataclass
+class Trip:
+    descriptor: TripDescriptor
+    stop_times: list[StopTime] = field(default_factory=list)
+    shape_polyline: str
+
+@dataclass
 class TripDescriptor:
     trip_id: Optional[str] = None
     route_id: Optional[str] = None
