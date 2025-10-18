@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import pytz
-import uuid
 import uvicorn
 
 from datetime import datetime
@@ -15,8 +14,8 @@ from google.transit import gtfs_realtime_pb2
 from google.protobuf.json_format import ParseDict
 from math import floor
 
-from avl2gtfsrt.common.shared import strip_feed_id
-from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripDescriptor, TripMetrics
+from avl2gtfsrt.common.shared import strip_feed_id, clamp
+from avl2gtfsrt.model.types import GnssPosition, Vehicle, TripDescriptor, Trip, TripMetrics
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 
@@ -53,7 +52,7 @@ class GtfsRealtimeServer():
                 vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if len(vehicle.activity.gnss_positions) > 0 else None
                 if vehicle_position is not None:
                     entity: dict = {
-                        'id': str(uuid.uuid4()),
+                        'id': vehicle.vehicle_ref,
                         'vehicle': {
                             'timestamp': vehicle_position.timestamp, 
                             'vehicle': {
@@ -91,7 +90,66 @@ class GtfsRealtimeServer():
         return await self._response(request, entities)
 
     async def _trip_updates(self, request: Request) -> Response:
-        return await self._response(request, [])
+        entities: list[dict] = list()
+        
+        vehicles: list[Vehicle] = self._object_storage.get_vehicles()
+        for vehicle in vehicles:
+            if vehicle.is_technically_logged_on and vehicle.is_operationally_logged_on and vehicle.activity.trip_metrics is not None:
+                
+                trip: Trip = self._object_storage.get_trip(vehicle.activity.trip_descriptor.trip_id)
+                vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if len(vehicle.activity.gnss_positions) > 0 else None
+                
+                if trip is not None:
+                    entity: dict = {
+                        'id': strip_feed_id(trip.descriptor.trip_id),
+                        'trip_update': {
+                            'timestamp': vehicle_position.timestamp, 
+                            'trip': {
+                                'trip_id': strip_feed_id(trip.descriptor.trip_id),
+                                'route_id': strip_feed_id(trip.descriptor.route_id),
+                                'start_time': trip.descriptor.start_time,
+                                'start_date': trip.descriptor.start_date
+                            },
+                            'vehicle': {
+                                'id': vehicle.vehicle_ref
+                            },
+                            'stop_time_update': list()
+                        }
+                    }
+
+                    for stop_time in trip.stop_times:
+                        # we only want to see upcoming stops, so filter for all stops where stop_sequence
+                        # is lesser than the next stop sequence of the vehicle
+                        if stop_time.stop_sequence < vehicle.activity.trip_metrics.next_stop_sequence:
+                            continue
+
+                        # keep track of eventual waiting times to comply with a delay
+                        waiting_time: int = stop_time.departure_timestamp - stop_time.arrival_timestamp
+
+                        arrival_delay: int = vehicle.activity.trip_metrics.current_delay
+                        departure_delay: int = clamp(
+                            vehicle.activity.trip_metrics.current_delay - waiting_time, 
+                            min(0, vehicle.activity.trip_metrics.current_delay),
+                            vehicle.activity.trip_metrics.current_delay
+                        )
+
+                        stop_time_update: dict = {
+                            'stop_id': strip_feed_id(stop_time.stop.stop_id),
+                            'arrival': {
+                                'delay': arrival_delay
+                            },
+                            'departure': {
+                                'delay': departure_delay
+                            }
+                        }
+
+                        entity['trip_update']['stop_time_update'].append(stop_time_update)
+
+                        break
+
+                    entities.append(entity)
+
+        return await self._response(request, entities)
     
     async def _response(self, request: Request, data: list) -> Response:
         timestamp = datetime.now().astimezone(pytz.timezone(os.getenv('A2G_SERVER_TIMEZONE', 'Europe/Berlin'))).timestamp()
