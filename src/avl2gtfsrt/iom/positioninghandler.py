@@ -69,9 +69,18 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                 if not vehicle.is_operationally_logged_on:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is not operationally logged on. Loading nominal trip candidates ...")
 
+                    adapter_type: str = os.getenv('A2G_NOMINAL_ADAPTER_TYPE', 'otp')
+                    adapter_config: str = os.getenv('A2G_NOMINAL_ADAPTER_CONFIG', None)
+
+                    if adapter_type not in ['otp']:
+                        raise RuntimeError(f"Invalid nominal adapter type {adapter_type}. Please configure a valid adapter type.")
+
+                    if adapter_config is None:
+                        raise RuntimeError('Nominal adapter configuration is not set. Please set a valid adapter configuration.')
+
                     client: NominalDataClient = NominalDataClient(
-                        os.getenv('A2G_NOMINAL_ADAPTER_TYPE'),
-                        json.loads(os.getenv('A2G_NOMINAL_ADAPTER_CONFIG'))
+                        adapter_type,
+                        json.loads(adapter_config)
                     )
 
                     trip_candidates: list[Trip] = client.get_trip_candidates(latitude, longitude)

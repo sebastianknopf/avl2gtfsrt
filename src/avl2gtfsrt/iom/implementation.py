@@ -72,8 +72,11 @@ class IoM:
             self._mqtt.username_pw_set(username=mqtt_username, password=mqtt_password)
 
         # connect to MQTT broker
-        mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', 'test.mosquitto.org')
+        mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', None)
         mqtt_port: str = os.getenv('A2G_WORKER_MQTT_PORT', '1883')
+
+        if mqtt_host is None:
+            raise RuntimeError('MQTT host is not configured. Please configure a MQTT hostname or IP address.')
 
         logging.info(f"{self.__class__.__name__}: Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
         self._mqtt.connect(mqtt_host, int(mqtt_port))
