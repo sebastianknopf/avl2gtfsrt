@@ -6,7 +6,18 @@ Vehicle positions in public GTFS-RT feeds are interpolated using nominal and rea
 
 The package avl2gtfsrt acts as a backend service to receive actual AVL data directly from sensors or small clients on the vehicles and match it to the correct trip. To work with a reproducable and standardized setup, avl2gtfsrt uses communication defined for [IoM (Internet Of Mobility)](https://www.vdv.de/leitmotif-ki.aspx) aka VDV435 for the AVL data transmission and exposes the results as two GTFS-RT feeds (vehicle positions and trip updates).
 
+See more [details about how it works](docs/HOW_IT_WORKS.md) under the hood.
+
 ## Installation
+
+### Additional Requirements
+The avl2gtfsrt backend service requires a MQTT broker for the VDV435 communication and a nominal data service for fetching possible trip candidates. This service can be running locally on the host or on a remote server.
+
+For loading nominal data, adapters can be implemented which load and prepare the data of the remote service. Currently, following adapters are implemented:
+
+- **OpenTripPlanner**: Uses the Transmodel V3 API to load nominal data. Adapter type is `otp`.
+
+### Usage
 To run the avl2gtfsrt service, simply clone this repository to your destination:
 
 ```bash
@@ -67,6 +78,17 @@ Following configuration variables are available:
 | A2G_NOMINAL_CACHING_ENABLED | _(optional)_ Enables caching of the nominal data. Default is `false`. **Not implemented yet!** |
 | A2G_SERVER_TIMEZONE | _(optional)_ Timezone the GTFS-RT server is running in. Default is `Europe/Berlin`. |
 | A2G_SERVER_PORT | _(optional)_ Port the GTFS-RT server is listening to on the host. Default is `9000`. |
+
+## Known Limitations
+As avl2gtfsrt only processes raw AVL data without any meta information (like route ID, agency ID or trip ID), the matching can always only be an estimation. In general, avl2gtfsrt is developed to generate no match than a wrong match. This means, the technology used has also some known limitations:
+
+- Matching can take quite long or generate some mismatches in transit networks with many lines travelling running in parallel and in close timing.
+- Nominal data need to contain a valid shape. This is a geographical polyline representing the way which should be used by the vehicle. Data without a shape cannot be considered as matching candidate.
+- As avl2gtfsrt performs also temporal matching before a trip is finally matched, vehicles running on a trip with too much delay (~ 15min) cannot be matched.
+- All parameters are configured internally to the tested and best matching values. However, there may be some differences for optimal parameters depending on the mode (bus, tram, railway) and other special cases.
+- For spatial calculations, simple projections are used. This can lead to problems with trips including several loops and visiting the same station twice or more.
+
+If you get in confrontation with one of those limitations and have an idea for an improvement, feel free to open up an issue and describe your problem.
 
 ## License
 This project is licensed under the Apache License. See [LICENSE](LICENSE.md) for more information.
