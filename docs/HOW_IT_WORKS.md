@@ -1,9 +1,9 @@
 # How It Works
 Matching raw AVL data to public transport trips in realtime without any further meta information can be quite challenging. There're only a few information which can be used for comparing the AVL data with nominal data and find a good match. Furthermore, this package should not just be another proprietary implemented AVL matching service, but use well-known and defined standards for reproducability and integration.
 
-This document describes the general architecture and technology used by avl2gtfsrt under the hood. The following diagram shows the complete architecture:
+This document describes the general architecture and technology used by `avl2gtfsrt` under the hood. The following diagram shows the complete architecture:
 
-![Full Architecture of avl2gtfsrt](img/SystemDiagram.png "Optionaler Titel")
+![Full Architecture of avl2gtfsrt](img/SystemDiagram.png)
 
 Components in blue or yellow are part of `avl2gtfsrt`, all other components are external components. In particular, there're have:
 
@@ -49,7 +49,11 @@ In general, `avl2gtfsrt` **requires a vehicle to move** to trigger the matching 
 The following matching steps are performed for all possible trip candidates, until one matching trip is found.
 
 ### Spatial Matching
-Simply matching one single GNSS position does not solve any problem at all: By watching just at one single GNSS position, all trips with a shape touching the last known GNSS position exactly once can be found. Imagine a transit network with several lines crossing each other, you will see too many possible trips which are definitely not served by this vehicle. The key is to track **a trajectory of up to 12 GNSS positions out of the last 60s** of this vehicle. By looking at this trajectory, it is monitored _where the vehicle actually is_ and _where it is coming from_. 
+Simply matching one single GNSS position does not solve any problem at all: By watching just at one single GNSS position, all trips with a shape touching the last known GNSS position exactly once can be found. Imagine a transit network with several lines crossing each other, you will see too many possible trips which are definitely not served by this vehicle. The key is to track **a trajectory of up to 12 GNSS positions out of the last 60s** of this vehicle. By looking at this trajectory, it is monitored _where the vehicle actually is_ and _where it is coming from_. See the following graphics for explanation:
+
+![GNSS Trajectory](img/GnssSampleTrajectory.png)
+
+The sample vehicle is moving from the right side to the left side. The red points are all GNSS points which are considered during matching. The gray points are GNSS points which were formerly monitored.
 
 This information is used to check whether the movement of _the last 60 seconds_ is matching a particular trip candidate. Spatial matching then works quite easy:
 
@@ -74,7 +78,11 @@ Multiplying the **spatial match score** and the **temporal match score** leads t
 ### Bayesian Learning On Trips
 In a real life scenario, the matching ends up with several trip candidates with distributed probabilities. Based on these probabilities, there is no opportunity to match a certain trip unambiguously. Furthermore, the possible trip candidates need to be manifested or release in several iterations. To enforce a continuous adaption of the probabilities even when the vehicle movement would match several possible trips nearly equally, [bayesian inference](https://en.wikipedia.org/wiki/Bayesian_inference) is used. This kind of machine learning uses probabilities of former iterations and combines them with the actual probabilities to differentiate the trip candidates from each other. A high probability leads to a slightly higher probability after applying the next bayesian update. In other words, the vehicle is slowly 'learning' which trip it is serving actually.
 
- In this process the whole chain of spatial and temporal matching is repeated in many iterations as long as the trip appears in the nominal candidate list until **a) only one trip candidate is left** or - this is the more realistic case - **b) a convergence can be found in the single probabilities** of each trip. A convergence means, the best matching trip has not improved its probability for the last few iterations significantly and then is considered to be the matched trip to have a termination criteria for the matching.
+ In this process the whole chain of spatial and temporal matching is repeated in many iterations as long as the trip appears in the nominal candidate list until **a) only one trip candidate is left** or - this is the more realistic case - **b) a convergence can be found in the single probabilities** of each trip. A convergence means, the best matching trip has not improved its probability for the last few iterations significantly and then is considered to be the matched trip to have a termination criteria for the matching. See the following graphics for explanation:
+
+ ![Sample Bayes Curve](img/BayesianSampleCurve.png)
+
+ You can see the trips #1 to #4. Trip #3 disappears after the 5. iteration, as it does not match spatially or is not departing at the corresponding station for the last AVL update anymore. All other trips are converging whereas trip #2 is the best match for all iterations.
 
  ## Further Processing
  After finding the matching process, the IoM backend performs an **operational log on** for the particular vehicle and excludes it from the entire matching cycle on each GNSS position update.
