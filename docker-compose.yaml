@@ -1,7 +1,6 @@
 services:
   mongodb:
     image: mongo:latest
-    container_name: mongodb
     restart: unless-stopped
     expose:
       - "27017"
@@ -18,10 +17,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    container_name: worker
     restart: unless-stopped
-    entrypoint: python -m avl2gtfsrt
-    command: worker
+    command: "python -m avl2gtfsrt worker"
     environment:
       - A2G_DEBUG
       - A2G_ORGANISATION_ID
@@ -42,10 +39,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    container_name: server
     restart: unless-stopped
-    entrypoint: python -m avl2gtfsrt
-    command: server
+    command: "python -m avl2gtfsrt server"
     ports:
       - "${A2G_SERVER_PORT:-9000}:9000"
     environment:
