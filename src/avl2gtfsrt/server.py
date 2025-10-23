@@ -56,7 +56,8 @@ class GtfsRealtimeServer():
                         'vehicle': {
                             'timestamp': vehicle_position.timestamp, 
                             'vehicle': {
-                                'id': vehicle.vehicle_ref
+                                'id': vehicle.vehicle_ref,
+                                'label': vehicle.vehicle_ref
                             },
                             'position': {
                                 'latitude': vehicle_position.latitude,
@@ -111,7 +112,8 @@ class GtfsRealtimeServer():
                                 'start_date': trip.descriptor.start_date
                             },
                             'vehicle': {
-                                'id': vehicle.vehicle_ref
+                                'id': vehicle.vehicle_ref,
+                                'label': vehicle.vehicle_ref
                             },
                             'stop_time_update': list()
                         }
