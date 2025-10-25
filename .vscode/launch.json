@@ -39,7 +39,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/util/simulation.py",
-            "args": ["${input:simulationLineName}"],
+            "args": ["${input:simulationLineName}", "${input:simulationOrganisationId}"],
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/dev.env"
@@ -50,6 +50,12 @@
             "id": "simulationLineName",
             "type": "promptString",
             "description": "Enter the line name to start the simulation"
+        },
+        {
+            "id": "simulationOrganisationId",
+            "type": "promptString",
+            "default": "TEST",
+            "description": "Enter the organisation ID to start the simulation"
         }
     ]
 }

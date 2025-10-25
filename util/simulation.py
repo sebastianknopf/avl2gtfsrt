@@ -131,7 +131,7 @@ coordinates: dict =  {
         (48.89330451170255, 8.701425587186293), (48.8933486636428, 8.701537512215793),
         (48.8932677183889, 8.703272350180697), (48.89317941432648, 8.704469948001787)
     ],
-    '743': [ # Line 743, Salmbach Friedhof - Pforzheim Leopoldplatz
+    '743': [ # Line 743, Salmbach Friedhof - Pforzheim Leopoldplatz (Express Bus)
         (48.81968670072942, 8.65279087563863), (48.820410515256924, 8.653599191913827),
         (48.820708553494654, 8.654035682702045), (48.82079370695138, 8.654116514329928),
         (48.820708553494654, 8.65421351228332), (48.821017234087265, 8.654488339816965),
@@ -190,6 +190,7 @@ if __name__ == "__main__":
     # set general publishing data
     vehicle_ref = 'TE-ST3'
     simulation_line_number: str = sys.argv[1]
+    organisation_id: str = sys.argv[2]
 
     logging.info(f'Starting simulation for vehicle {vehicle_ref} on line {simulation_line_number} ...')
     logging.info(f'STOP THE SIMULATION ONLY BY USING CTRL+C IN ORDER TO PERFORM CLEANUP LOGIC')
@@ -215,7 +216,7 @@ if __name__ == "__main__":
 
         logging.info('Publishing technical logoff message ...')
         client.publish(
-            'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/TEST/any/ItcsId/1/CorrelationId/1/RequestData',
+            f'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/{organisation_id}/any/ItcsId/1/CorrelationId/1/RequestData',
             log_off_message.format(
                 timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 messageId=str(uuid.uuid4()),
@@ -232,7 +233,7 @@ if __name__ == "__main__":
     # publish technical logon message
     logging.info('Publishing technical logon message ...')
     client.publish(
-        'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/TEST/any/ItcsId/1/CorrelationId/1/RequestData',
+        f'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/{organisation_id}/any/ItcsId/1/CorrelationId/1/RequestData',
         log_on_message.format(
             timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             messageId=str(uuid.uuid4()),
@@ -248,7 +249,7 @@ if __name__ == "__main__":
         # publish GNSS physical position message
         logging.info(f"Publishing GNSS physical position message ... https://www.google.com/maps?q={coordinate[0]},{coordinate[1]}")
         client.publish(
-            'IoM/1.0/DataVersion/2025/Country/de/any/Organisation/TEST/any/Vehicle/{vehicleId}/any/PhysicalPosition/GnssPhysicalPositionData'.format(vehicleId=vehicle_ref),
+            'IoM/1.0/DataVersion/2025/Country/de/any/Organisation/{organisationId}/any/Vehicle/{vehicleId}/any/PhysicalPosition/GnssPhysicalPositionData'.format(vehicleId=vehicle_ref, organisationId=organisation_id),
             gnss_physical_position_message.format(
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 timestampOfMeasurement=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
@@ -259,13 +260,17 @@ if __name__ == "__main__":
             retain=True
         )
 
-        # wait for 10s before publishing the next coordinate
-        time.sleep(10)
+        # check if there's a waiting time defined and use this
+        # otherwise, use 10s by default
+        if len(coordinate) == 3:
+            time.sleep(coordinate[2])
+        else:
+            time.sleep(10)
 
     # publish technical logon message
     logging.info('Publishing technical logoff message ...')
     client.publish(
-        'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/TEST/any/ItcsId/1/CorrelationId/1/RequestData',
+        f'IoM/1.0/DataVersion/2025/Inbox/ItcsInbox/Country/de/any/Organisation/{organisation_id}/any/ItcsId/1/CorrelationId/1/RequestData',
         log_off_message.format(
             timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             messageId=str(uuid.uuid4()),
