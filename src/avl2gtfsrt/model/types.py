@@ -14,6 +14,7 @@ class Vehicle:
     is_technically_logged_on: bool = False
     is_operationally_logged_on: bool = False
     activity: Optional[VehicleActivity] = None
+    cache: Optional[VehicleCache] = None
 
 @dataclass
 class VehicleActivity:
@@ -23,6 +24,10 @@ class VehicleActivity:
     trip_candidate_failures: int = 0
     trip_descriptor: Optional[TripDescriptor] = None
     trip_metrics: Optional[TripMetrics] = None
+
+@dataclass
+class VehicleCache:
+    trip_candidates: list[Trip] = field(default_factory=list)
 
 @dataclass
 class Stop:
