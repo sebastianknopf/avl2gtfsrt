@@ -121,6 +121,9 @@ class GtfsRealtimeServer():
                         }
                     }
 
+                    # generate StopTimeUpdates for each upcoming stop
+                    # extract current_delay into a single variable as it may be modified during processing
+                    current_delay: int = vehicle.activity.trip_metrics.current_delay
                     for stop_time in trip.stop_times:
                         # we only want to see upcoming stops, so filter for all stops where stop_sequence
                         # is lesser than the next stop sequence of the vehicle
@@ -131,19 +134,27 @@ class GtfsRealtimeServer():
                         waiting_time: int = stop_time.departure_timestamp - stop_time.arrival_timestamp
 
                         # handle waiting times depending whether the trip is delayed or too early
-                        if vehicle.activity.trip_metrics.current_delay < 0:
+                        if current_delay < 0:
+                            arrival_delay: int = current_delay
+
                             # we assume that the vehicle will wait its nominal departure time 
                             # at a station with designed waiting time
-                            arrival_delay: int = vehicle.activity.trip_metrics.current_delay
-                            departure_delay: int = 0
-                        elif vehicle.activity.trip_metrics.current_delay > 0:
+                            if waiting_time > 0:
+                                departure_delay: int = 0
+                                current_delay = 0
+                            else:
+                                departure_delay: int = current_delay
+                        elif current_delay > 0:
                             # waiting time is not needed anymore but reduces the delay
-                            arrival_delay: int = vehicle.activity.trip_metrics.current_delay
+                            arrival_delay: int = current_delay
                             departure_delay: int = clamp(
-                                vehicle.activity.trip_metrics.current_delay - waiting_time, 
-                                min(0, vehicle.activity.trip_metrics.current_delay),
-                                vehicle.activity.trip_metrics.current_delay
+                                current_delay - waiting_time, 
+                                min(0, current_delay),
+                                current_delay
                             )
+
+                            # as we re-calculated the delay, set it for further processing too ...
+                            current_delay = departure_delay
                         else:
                             # we have no delay at all
                             arrival_delay: int = 0
