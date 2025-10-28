@@ -57,7 +57,8 @@ class GtfsRealtimeServer():
                             'timestamp': vehicle_position.timestamp, 
                             'vehicle': {
                                 'id': vehicle.vehicle_ref,
-                                'label': vehicle.vehicle_ref
+                                'label': vehicle.vehicle_ref,
+                                'licensePlate': vehicle.vehicle_ref
                             },
                             'position': {
                                 'latitude': vehicle_position.latitude,
@@ -113,7 +114,8 @@ class GtfsRealtimeServer():
                             },
                             'vehicle': {
                                 'id': vehicle.vehicle_ref,
-                                'label': vehicle.vehicle_ref
+                                'label': vehicle.vehicle_ref,
+                                'licensePlate': vehicle.vehicle_ref
                             },
                             'stop_time_update': list()
                         }
@@ -128,26 +130,40 @@ class GtfsRealtimeServer():
                         # keep track of eventual waiting times to comply with a delay
                         waiting_time: int = stop_time.departure_timestamp - stop_time.arrival_timestamp
 
-                        arrival_delay: int = vehicle.activity.trip_metrics.current_delay
-                        departure_delay: int = clamp(
-                            vehicle.activity.trip_metrics.current_delay - waiting_time, 
-                            min(0, vehicle.activity.trip_metrics.current_delay),
-                            vehicle.activity.trip_metrics.current_delay
-                        )
+                        # handle waiting times depending whether the trip is delayed or too early
+                        if vehicle.activity.trip_metrics.current_delay < 0:
+                            # we assume that the vehicle will wait its nominal departure time 
+                            # at a station with designed waiting time
+                            arrival_delay: int = vehicle.activity.trip_metrics.current_delay
+                            departure_delay: int = 0
+                        elif vehicle.activity.trip_metrics.current_delay > 0:
+                            # waiting time is not needed anymore but reduces the delay
+                            arrival_delay: int = vehicle.activity.trip_metrics.current_delay
+                            departure_delay: int = clamp(
+                                vehicle.activity.trip_metrics.current_delay - waiting_time, 
+                                min(0, vehicle.activity.trip_metrics.current_delay),
+                                vehicle.activity.trip_metrics.current_delay
+                            )
+                        else:
+                            # we have no delay at all
+                            arrival_delay: int = 0
+                            departure_delay: int = 0
 
                         stop_time_update: dict = {
                             'stop_id': strip_feed_id(stop_time.stop.stop_id),
                             'arrival': {
+                                'time': (stop_time.arrival_timestamp + arrival_delay),
                                 'delay': arrival_delay
                             },
                             'departure': {
+                                'time': (stop_time.departure_timestamp + departure_delay),
                                 'delay': departure_delay
                             }
                         }
 
                         entity['trip_update']['stop_time_update'].append(stop_time_update)
 
-                        break
+                        #break
 
                     entities.append(entity)
 
