@@ -8,7 +8,7 @@ from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnResponseDataStructure, Te
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, TechnicalVehicleLogOffResponseStructure
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
 from avl2gtfsrt.iom.basehandler import AbstractRequestResponseHandler
-from avl2gtfsrt.model.types import Vehicle, VehicleActivity
+from avl2gtfsrt.model.types import Vehicle, VehicleActivity, VehicleCache
 
 
 class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
@@ -24,6 +24,7 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
         if not vehicle.is_technically_logged_on:
             vehicle.is_technically_logged_on = True
             vehicle.activity = VehicleActivity()
+            vehicle.cache = VehicleCache()
 
             self._storage.update_vehicle(vehicle)
 
@@ -55,6 +56,7 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
             vehicle.is_operationally_logged_on = False
             vehicle.is_technically_logged_on = False
             vehicle.activity = None
+            vehicle.cache = None
 
             self._storage.update_vehicle(vehicle)
 
