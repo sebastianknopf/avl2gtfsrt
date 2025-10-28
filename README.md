@@ -73,6 +73,7 @@ Following configuration variables are available:
 | A2G_WORKER_MQTT_PORT | _(optional)_ Port for the VDV435 broker. Default is `1883`. |
 | A2G_WORKER_MQTT_USERNAME | _(optional)_ Username for the VDV435 broker. Required if the broker enforces authentication. |
 | A2G_WORKER_MQTT_PASSWORD | _(optional)_ Password for the VDV435 broker. Required if the broker enforces authentication. |
+| A2G_WORKER_MQTT_CLIENT_SUFFIX | _(optional)_ Suffix added to the client ID `avl2gtfsrt-IoM-{suffix}`. If not specified, a 6-char random value is used. |
 | A2G_NOMINAL_ADAPTER_TYPE | _(optional)_ Adapter type for loading nominal data. Default is `otp`. Currently supported adapter types: `otp`. |
 | A2G_NOMINAL_ADAPTER_CONFIG | _(required)_ JSON configuration string for the nominal adapter. Requires at least the `endpoint` key, other keys depend on the adapter used. |
 | A2G_NOMINAL_CACHING_ENABLED | _(optional)_ Enables caching of the nominal data. Default is `false`. **Not implemented yet!** |

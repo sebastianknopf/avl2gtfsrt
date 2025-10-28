@@ -1,6 +1,8 @@
 import logging
 import os
+import random
 import re
+import string
 
 from concurrent.futures import ThreadPoolExecutor
 from paho.mqtt import client as mqtt
@@ -38,7 +40,13 @@ class IoM:
         self._lock = Lock()
 
         # create MQTT client
-        self._mqtt: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-IoM')
+        client_default_suffix: str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        client_suffix: str = os.getenv('A2G_WORKER_MQTT_CLIENT_SUFFIX', client_default_suffix)
+        self._mqtt: mqtt.Client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION2, 
+            protocol=mqtt.MQTTv5, 
+            client_id=f"avl2gtfsrt-IoM-{client_suffix}"
+        )
 
         # create TLS topic structures
         self._tls_sub_itcs_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/+/Inbox/ItcsInbox/Country/de/+/Organisation/{organisation_id}/+/ItcsId/{itcs_id}/#", 2)
