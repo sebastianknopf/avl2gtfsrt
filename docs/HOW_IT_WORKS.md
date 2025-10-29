@@ -55,7 +55,7 @@ Simply matching one single GNSS position does not solve any problem at all: By w
 
 The sample vehicle is moving from the right side to the left side. The red points are all GNSS points which are considered during matching. The gray points are GNSS points which were formerly monitored.
 
-This information is used to check whether the movement of _the last 60 seconds_ is matching a particular trip candidate. Spatial matching then works quite easy:
+This information is used to check whether the movement of _the last 150 seconds_ is matching a particular trip candidate. Spatial matching then works quite easy:
 
 - A buffer of **30 meters** is built around the trip shape polyline. This ensures that even noisy GNSS data can be processed without leaving to much accurancy.
 - If **at least 60% of the trajectory** matches the trip shape, the trip is further considered as candidate. Otherwise the trip is discarded here.

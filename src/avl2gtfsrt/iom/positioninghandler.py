@@ -34,10 +34,10 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         latitude: float = msg.gnss_physical_position.wgs_84_physical_position.latitude
         longitude: float = msg.gnss_physical_position.wgs_84_physical_position.longitude
 
-        # verify that the GNSS timestamp is not older than 60 seconds
+        # verify that the GNSS timestamp is not older than 150 seconds (2,5 minutes)
         current_timestamp: int = unixtimestamp()    
-        if timestamp < current_timestamp - 60:
-            logging.warning(f"{self.__class__.__name__}: GNSS data update for vehicle {vehicle_ref} is older than 60 seconds and will be ignored.")
+        if timestamp < current_timestamp - 150:
+            logging.warning(f"{self.__class__.__name__}: GNSS data update for vehicle {vehicle_ref} is older than 150 seconds and will be ignored.")
 
             return
 
@@ -69,6 +69,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                 if not vehicle.is_operationally_logged_on:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is not operationally logged on. Loading nominal trip candidates ...")
 
+                    # load configured adapter and fetch trip candidates ...
                     adapter_type: str = os.getenv('A2G_NOMINAL_ADAPTER_TYPE', 'otp')
                     adapter_config: str = os.getenv('A2G_NOMINAL_ADAPTER_CONFIG', None)
 
@@ -77,14 +78,19 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                     if adapter_config is None:
                         raise RuntimeError('Nominal adapter configuration is not set. Please set a valid adapter configuration.')
-
+                    
                     client: NominalDataClient = NominalDataClient(
                         adapter_type,
                         json.loads(adapter_config)
                     )
 
-                    trip_candidates: list[Trip] = client.get_trip_candidates(latitude, longitude)
+                    trip_candidates: list[Trip]|None = client.get_trip_candidates(latitude, longitude)
 
+                    # if trip candidates could not be loaded or list was empty, try to use cached trip candidates
+                    if trip_candidates is None or len(trip_candidates) == 0:
+                        trip_candidates = vehicle.cache.trip_candidates
+
+                    # rund AVL matcher
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
                         trip_candidates
@@ -103,6 +109,13 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     vehicle.activity.trip_candidate_convergence = trip_candidate_convergence
                     vehicle.activity.trip_candidate_probabilities = trip_candidate_probabilities
 
+                    # save considered trip candidates to vehicle cache
+                    vehicle.cache.trip_candidates = list()
+                    for trip_candidate in trip_candidates:
+                        if trip_candidate.descriptor.trip_id in trip_candidate_probabilities:
+                            vehicle.cache.trip_candidates.append(trip_candidate)
+
+                    # finally update all vehicle data
                     self._storage.update_vehicle(vehicle)
 
                     # return result

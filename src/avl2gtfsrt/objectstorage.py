@@ -56,10 +56,10 @@ class ObjectStorage:
 
     def _cleanup_vehicle_activity_gnss(self, activity: VehicleActivity) -> VehicleActivity:
         
-        # reduce last positions to the latest 10 elements
-        # remove also positions if they are older than 5 minutes
+        # reduce last positions to the latest 12 elements
+        # remove also positions if they are older than 2,5 minutes
         # define variables for cleaning up
-        gnss_max_age_seconds: int = 60
+        gnss_max_age_seconds: int = 120 + 30
 
         # remove all GNSS positions which are older than 60s
         current_timestamp: int = unixtimestamp()
@@ -69,8 +69,6 @@ class ObjectStorage:
                 updated_gnss_positions.append(gnss_position)
 
         activity.gnss_positions = updated_gnss_positions
-
-        # restrict to a maximum of 12 GNSS positions totally
         activity.gnss_positions = activity.gnss_positions[-12:]
 
         return activity
