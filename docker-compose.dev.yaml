@@ -1,11 +1,11 @@
 services:
-  worker:
+  avl2gtfsrt-worker:
     environment:
       - PYTHONPATH=src
     command: "python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m avl2gtfsrt worker"
     ports:
       - "5678:5678"
-  server:
+  avl2gtfsrt-server:
     environment:
       - PYTHONPATH=src
     command: "python -m debugpy --listen 0.0.0.0:5679 --wait-for-client -m avl2gtfsrt server"

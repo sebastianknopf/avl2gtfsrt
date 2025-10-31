@@ -1,5 +1,5 @@
 services:
-  mongodb:
+  avl2gtfsrt-mongodb:
     image: mongo:latest
     restart: unless-stopped
     expose:
@@ -13,7 +13,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-  worker:
+  avl2gtfsrt-worker:
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -34,9 +34,9 @@ services:
       - A2G_NOMINAL_ADAPTER_CONFIG
       - A2G_NOMINAL_CACHING_ENABLED
     depends_on:
-      "mongodb":
+      "avl2gtfsrt-mongodb":
         condition: service_healthy
-  server:
+  avl2gtfsrt-server:
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -50,5 +50,5 @@ services:
       - A2G_MONGODB_PASSWORD
       - A2G_SERVER_TIMEZONE
     depends_on:
-      "mongodb":
+      "avl2gtfsrt-mongodb":
         condition: service_healthy

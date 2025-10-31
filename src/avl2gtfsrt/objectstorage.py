@@ -7,7 +7,7 @@ from avl2gtfsrt.model.types import *
 
 class ObjectStorage:
     def __init__(self, username: str, password: str, db_name: str = 'avl2gtfsrt'):
-        self._mdb = MongoClient(f"mongodb://{username}:{password}@mongodb:27017/?authSource=admin")
+        self._mdb = MongoClient(f"mongodb://{username}:{password}@avl2gtfsrt-mongodb:27017/?authSource=admin")
 
         self._db = self._mdb[db_name]
 
