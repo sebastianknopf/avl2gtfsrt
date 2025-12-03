@@ -65,4 +65,5 @@ class TripMetrics:
     next_stop_sequence: Optional[int] = None
     next_stop_id: Optional[str] = None
     current_stop_status: Optional[str] = None
+    current_stop_is_final: Optional[bool] = None
     current_delay: Optional[int] = None
