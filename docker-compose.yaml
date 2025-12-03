@@ -33,6 +33,10 @@ services:
       - A2G_NOMINAL_ADAPTER_TYPE
       - A2G_NOMINAL_ADAPTER_CONFIG
       - A2G_NOMINAL_CACHING_ENABLED
+      - A2G_MATCHING_DATA_REVIEW_SECONDS
+      - A2G_MATCHING_MAX_DATA_POINTS
+      - A2G_MATCHING_MAX_INTERVAL
+      - A2G_MATCHING_MAX_FAILURES
     depends_on:
       "avl2gtfsrt-mongodb":
         condition: service_healthy
