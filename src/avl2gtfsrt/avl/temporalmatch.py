@@ -116,6 +116,10 @@ class TemporalMatch:
                 distance: float = stop_projection - position_projection
                 if abs(distance) < 30:
                     trip_metrics.current_stop_status = 'STOPPED_AT'
+
+                    if stop_sequence == max(list(self._stop_projections_on_trip_shape.keys())):
+                        trip_metrics.current_stop_is_final = True
+
                 elif distance < 60:
                     trip_metrics.current_stop_status = 'INCOMING_AT'
 
