@@ -123,6 +123,9 @@ class TemporalMatch:
                 elif distance < 60:
                     trip_metrics.current_stop_status = 'INCOMING_AT'
 
+                    if stop_sequence == max(list(self._stop_projections_on_trip_shape.keys())):
+                        trip_metrics.current_stop_is_final = True
+
                 # set current and next stop sequence and ID
                 if stop_sequence > 0:
                     trip_metrics.current_stop_sequence = stop_sequence - 1
