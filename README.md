@@ -77,6 +77,10 @@ Following configuration variables are available:
 | A2G_NOMINAL_ADAPTER_TYPE | _(optional)_ Adapter type for loading nominal data. Default is `otp`. Currently supported adapter types: `otp`. |
 | A2G_NOMINAL_ADAPTER_CONFIG | _(required)_ JSON configuration string for the nominal adapter. Requires at least the `endpoint` key, other keys depend on the adapter used. |
 | A2G_NOMINAL_CACHING_ENABLED | _(optional)_ Enables caching of the nominal data. Default is `false`. **Not implemented yet!** |
+| A2G_MATCHING_DATA_REVIEW_SECONDS | _(optional)_ Maximum timespan for GNSS data to be considered in matching and verification. Default is `120`. |
+| A2G_MATCHING_MAX_DATA_POINTS | _(optional)_ Maximumg number of GNSS data to be considered in matching and verification. Default is `60`. |
+| A2G_MATCHING_MAX_INTERVAL | _(optional)_ Maximum interval for matching. Use this parameter to restrict matching to a cycle of e.g. 5s to avoid a system overload in a configuration with many vehicles publishing their data each 5 seconds or more often. Default is `5`. |
+| A2G_MATCHING_MAX_FAILURES | _(optional)_ Maximum number of allowed failures when verifying an already matched vehicle. If the number of failures exceeds this value, the vehicle is operationally logged of and a new matching cycle starts. Default is `3`. |
 | A2G_SERVER_TIMEZONE | _(optional)_ Timezone the GTFS-RT server is running in. Default is `Europe/Berlin`. |
 | A2G_SERVER_PORT | _(optional)_ Port the GTFS-RT server is listening to on the host. Default is `9000`. |
 
