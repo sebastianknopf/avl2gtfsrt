@@ -116,8 +116,15 @@ class TemporalMatch:
                 distance: float = stop_projection - position_projection
                 if abs(distance) < 30:
                     trip_metrics.current_stop_status = 'STOPPED_AT'
+
+                    if stop_sequence == max(list(self._stop_projections_on_trip_shape.keys())):
+                        trip_metrics.current_stop_is_final = True
+
                 elif distance < 60:
                     trip_metrics.current_stop_status = 'INCOMING_AT'
+
+                    if stop_sequence == max(list(self._stop_projections_on_trip_shape.keys())):
+                        trip_metrics.current_stop_is_final = True
 
                 # set current and next stop sequence and ID
                 if stop_sequence > 0:
@@ -135,6 +142,9 @@ class TemporalMatch:
                 
                 if actual_next_stop_time is not None and nominal_next_stop_time is not None:
                     trip_metrics.current_delay = int(nominal_next_stop_time.departure_timestamp - actual_next_stop_time.departure_timestamp)
+                    
+                    if trip_metrics.current_delay <= (-15 * 60):
+                        logging.warning(f"{self.__class__.__name__}: Trip has a significant negative delay! Compared actual next stop time {actual_next_stop_time.departure_timestamp} with nominal next stop time {nominal_next_stop_time.departure_timestamp}.")
 
                 break
 

@@ -194,6 +194,23 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                     self._storage.update_vehicle(vehicle)
                     
+                    # if the vehicle arrived at the last stop of the journey, 
+                    # perform a log off and delete trip descriptor
+                    if vehicle.activity.trip_metrics.current_stop_is_final == True:
+                        if vehicle.is_operationally_logged_on:
+                            logging.info(f"{self.__class__.__name__}: Vehicle arrived at last stop. Performing operational log off ...")
+                            
+                            vehicle.is_operationally_logged_on = False
+                            vehicle.activity.trip_descriptor = None
+                            vehicle.activity.trip_metrics = None
+
+                            # delete also GNSS position history in order to avoid a 
+                            # re-assignment to the last trip with the next GNSS update, 
+                            # when it has reached the final stop as indicated above
+                            vehicle.activity.gnss_positions = []
+
+                            self._storage.update_vehicle(vehicle)
+
                     # if there're too many failures, perform a log off and delete trip descriptor
                     max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '3'))
                     if vehicle.activity.trip_candidate_failures >= max_failures:
