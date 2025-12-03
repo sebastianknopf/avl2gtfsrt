@@ -139,6 +139,9 @@ class TemporalMatch:
                 
                 if actual_next_stop_time is not None and nominal_next_stop_time is not None:
                     trip_metrics.current_delay = int(nominal_next_stop_time.departure_timestamp - actual_next_stop_time.departure_timestamp)
+                    
+                    if trip_metrics.current_delay <= (-15 * 60):
+                        logging.warning(f"{self.__class__.__name__}: Trip has a significant negative delay! Compared actual next stop time {actual_next_stop_time.departure_timestamp} with nominal next stop time {nominal_next_stop_time.departure_timestamp}.")
 
                 break
 
