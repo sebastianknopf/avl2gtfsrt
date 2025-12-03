@@ -204,6 +204,11 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.trip_descriptor = None
                             vehicle.activity.trip_metrics = None
 
+                            # delete also GNSS position history in order to avoid a 
+                            # re-assignment to the last trip with the next GNSS update, 
+                            # when it has reached the final stop as indicated above
+                            vehicle.activity.gnss_positions = []
+
                             self._storage.update_vehicle(vehicle)
 
                     # if there're too many failures, perform a log off and delete trip descriptor
