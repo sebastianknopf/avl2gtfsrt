@@ -6,8 +6,11 @@ from avl2gtfsrt.model.types import *
 
 
 class ObjectStorage:
-    def __init__(self, username: str, password: str, db_name: str = 'avl2gtfsrt'):
+    def __init__(self, username: str, password: str, data_review_seconds: int, max_data_points: int, db_name: str = 'avl2gtfsrt'): 
         self._mdb = MongoClient(f"mongodb://{username}:{password}@avl2gtfsrt-mongodb:27017/?authSource=admin")
+
+        self._data_review_seconds: int = data_review_seconds
+        self._max_data_points: int = max_data_points
 
         self._db = self._mdb[db_name]
 
@@ -56,10 +59,11 @@ class ObjectStorage:
 
     def _cleanup_vehicle_activity_gnss(self, activity: VehicleActivity) -> VehicleActivity:
         
-        # reduce last positions to the latest 12 elements
-        # remove also positions if they are older than 2,5 minutes
+        # 1. remove positions if they are older than max_age_seconds
+        # 2. reduce latest positions to the maximum of max_data_points
+
         # define variables for cleaning up
-        gnss_max_age_seconds: int = 120 + 30
+        gnss_max_age_seconds: int = self._data_review_seconds
 
         # remove all GNSS positions which are older than 60s
         current_timestamp: int = unixtimestamp()
@@ -69,7 +73,7 @@ class ObjectStorage:
                 updated_gnss_positions.append(gnss_position)
 
         activity.gnss_positions = updated_gnss_positions
-        activity.gnss_positions = activity.gnss_positions[-12:]
+        activity.gnss_positions = activity.gnss_positions[-(self._max_data_points):]
 
         return activity
 
