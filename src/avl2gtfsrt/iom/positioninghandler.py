@@ -56,11 +56,27 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         
         # check whether AVL processing is enabled
         if len(vehicle.activity.gnss_positions) > 1:
-            gnss_vector: SpatialVectorCollection = SpatialVectorCollection(vehicle.activity.gnss_positions)
 
             # matching is only possible if the vehicle is moving
             # remember: we need at sequence of movement coordinates to match the trip!
-            if gnss_vector.is_movement():
+            # see #10: there's also a minimum interval for seconds required between each considered position
+            # this is to prevent a system overload, when a device e.g. sends its position every second
+            max_matching_interval: int = int(os.getenv('A2G_MATCHING_MAX_INTERVAL', '5'))
+            if max_matching_interval > 0:
+                matching_enabled: bool = False
+
+                latest_gnss_timestamp: int = vehicle.activity.gnss_positions[-1].timestamp
+                for p in reversed(vehicle.activity.gnss_positions):
+                    current_gnss_timestamp: int = p.timestamp
+                    if latest_gnss_timestamp - current_gnss_timestamp >= max_matching_interval:
+                        matching_enabled = True
+                        break
+            else:
+                matching_enabled: bool = True
+            
+            # run matching here ...
+            gnss_vector: SpatialVectorCollection = SpatialVectorCollection(vehicle.activity.gnss_positions)
+            if matching_enabled and gnss_vector.is_movement():
 
                 # check if the vehicle is not operationally logged on
                 # request all possible trip candidates in that case
@@ -179,7 +195,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     self._storage.update_vehicle(vehicle)
                     
                     # if there're too many failures, perform a log off and delete trip descriptor
-                    if vehicle.activity.trip_candidate_failures >= 4:
+                    max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '3'))
+                    if vehicle.activity.trip_candidate_failures >= max_failures:
                         if vehicle.is_operationally_logged_on:
                             logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
                             

@@ -27,7 +27,12 @@ class GtfsRealtimeServer():
         mongodb_password: str = os.getenv('A2G_MONGODB_PASSWORD', '')
 
         logging.info(f"{self.__class__.__name__}: Connecting to MongoDB ...")
-        self._object_storage: ObjectStorage = ObjectStorage(mongodb_username, mongodb_password)
+        self._object_storage: ObjectStorage = ObjectStorage(
+            mongodb_username, 
+            mongodb_password,
+            int(os.getenv('A2G_MATCHING_DATA_REVIEW_SECONDS', '120')),
+            int(os.getenv('A2G_MATCHING_MAX_DATA_POINTS', '60'))
+        )
         
         logging.info(f"{self.__class__.__name__}: Creating FastAPI instance ...")
         self._fastapi = FastAPI()
