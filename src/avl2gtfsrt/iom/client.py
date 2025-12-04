@@ -113,9 +113,19 @@ class IomClient:
         logging.info(f"{self.instance_id}/{self.__class__.__name__}: Received message in topic {topic}")
         
         if self._role == IomRole.ITCS and self._tls_matches(topic, 'sub_itcs_inbox'):
-            self._handle_request(topic, payload)
+            # if we're waiting for a response, handle the incoming message as response
+            # otherwise handle it as request
+            if self._correlation_id is None:
+                self._handle_request(topic, payload)
+            else:
+                self._handle_reponse(topic, payload)
         elif self._role == IomRole.VEHICLE and self._tls_matches(topic, 'sub_vehicle_inbox'):
-            self._handle_response(topic, payload)
+            # if we're waiting for a response, handle the incoming message as response
+            # otherwise handle it as request
+            if self._correlation_id is None:
+                self._handle_request(topic, payload)
+            else:
+                self._handle_reponse(topic, payload)
         else:
             self._handle_message(topic, payload)
 
@@ -146,6 +156,39 @@ class IomClient:
         for topic, qos in self.get_subscribed_topics():
             logging.info(f"{self.instance_id}/{self.__class__.__name__}: Unsubscribing from topic: {topic}")
             self._mqtt.unsubscribe(topic)
+    
+    def _publish(self, tls_name: str, payload: str, retain=False, **arguments):
+        tls: tuple[str, int] = self._get_tls(tls_name)
+
+        tls_str: str = tls[0]
+        tls_str = tls_str.format(**arguments)
+
+        self._mqtt.publish(
+            tls_str,
+            payload,
+            tls[1],
+            retain
+        )
+
+        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Published message to topic {tls_str}")
+
+    def _request(self, tls_name: str, payload: str, **arguments) -> AbstractResponseStructure:
+        if self._correlation_id is None:
+            self._correlation_id = '1'
+        
+        self._publish(tls_name, payload, False, correlation_id=self._correlation_id)
+
+        with self._correlation_condition:
+            self._correlation_condition.wait(timeout=30)   
+            
+            self._correlation_id = None
+            self._correlation_result = None
+
+            if self._correlation_result is not None:
+                response: AbstractResponseStructure = Serializable.load(self._correlation_result)
+                return response
+            else:                
+                raise RuntimeError(f"No valid response to request with correlation ID {self._correlation_id}!")
     
     def _handle_request(self, topic: str, payload: bytes) -> None:
         # lookup for correlation ID in the topic
@@ -205,6 +248,21 @@ class IomClient:
                 correlation_id=correlation_id
             )
 
+    def _handle_reponse(self, topic: str, payload: bytes) -> None:
+        # lookup for correlation ID in the topic
+        correlation_id: str = get_tls_value(topic, 'CorrelationId')
+
+        # check whether correlation ID matches to the last request
+        if correlation_id == self._correlation_id:
+
+            # set result
+            self._correlation_id = None
+            self._correlation_result = payload
+
+            # raise condition update
+            with self._correlation_condition:
+                self._correlation_condition.notify()
+    
     def _handle_message(self, topic: str, payload: bytes) -> None:
         # handle message based on the topic
         msg: AbstractBasicStructure = Serializable.load(payload)
@@ -299,51 +357,3 @@ class IomClient:
         regex = '^' + regex + '$'
 
         return re.match(regex, topic) is not None
-        
-    def _publish(self, tls_name: str, payload: str, retain=False, **arguments):
-        tls: tuple[str, int] = self._get_tls(tls_name)
-
-        tls_str: str = tls[0]
-        tls_str = tls_str.format(**arguments)
-
-        self._mqtt.publish(
-            tls_str,
-            payload,
-            tls[1],
-            retain
-        )
-
-        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Published message to topic {tls_str}")
-
-    def _request(self, tls_name: str, payload: str, **arguments) -> AbstractResponseStructure:
-        if self._correlation_id is None:
-            self._correlation_id = '1'
-        
-        self._publish(tls_name, payload, False, correlation_id=self._correlation_id)
-
-        with self._correlation_condition:
-            self._correlation_condition.wait(timeout=30)   
-
-            if self._correlation_result is not None:
-                response: AbstractResponseStructure = Serializable.load(self._correlation_result)
-                return response
-            else:
-                self._correlation_id = None
-                self._correlation_result = None
-                
-                raise RuntimeError(f"No valid response to request with correlation ID {self._correlation_id}!")
-    
-    def _handle_reponse(self, topic: str, payload: bytes) -> None:
-        # lookup for correlation ID in the topic
-        correlation_id: str = get_tls_value(topic, 'CorrelationId')
-
-        # check whether correlation ID matches to the last request
-        if correlation_id == self._correlation_id:
-
-            # set result
-            self._correlation_id = None
-            self._correlation_result = payload
-
-            # raise condition update
-            with self._correlation_condition:
-                self._correlation_condition.notify()
