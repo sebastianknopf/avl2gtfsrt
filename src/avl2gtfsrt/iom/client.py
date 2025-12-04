@@ -26,7 +26,7 @@ class TopicLevelStructureDict(dict):
     def __missing__(self, key):
         return f"{{{key}}}"
     
-class IoM:
+class IomClient:
 
     def __init__(self, organisation_id: str, itcs_id: str, object_storage: ObjectStorage, thread_executor: ThreadPoolExecutor) -> None:
         self._organisation_id = organisation_id

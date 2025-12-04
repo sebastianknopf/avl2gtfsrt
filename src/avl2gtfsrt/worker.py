@@ -6,7 +6,7 @@ import time
 
 from concurrent.futures import ThreadPoolExecutor
 
-from avl2gtfsrt.iom.implementation import IoM
+from avl2gtfsrt.iom.client import IomClient
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class Worker:
@@ -32,7 +32,7 @@ class Worker:
         organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
         itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
-        self._iom: IoM = IoM(
+        self._iom: IomClient = IomClient(
             organisation_id=organisation_id,
             itcs_id=itcs_id,
             object_storage=self._object_storage,
