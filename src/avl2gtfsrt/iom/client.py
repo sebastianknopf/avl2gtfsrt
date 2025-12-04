@@ -1,10 +1,8 @@
 import logging
-import os
-import random
 import re
-import string
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from paho.mqtt import client as mqtt
 from threading import Condition
 from threading import Lock
@@ -135,6 +133,60 @@ class IomClient:
 
         self._mqtt.loop_stop()
 
+    def log_on_vehicle(self, vehicle_ref: str) -> bool:
+        if self._role == IomRole.VEHICLE:
+            vehicle_ref: VehicleRef = VehicleRef(**{'#text': vehicle_ref})
+            
+            log_on_message: TechnicalVehicleLogOnRequestStructure = TechnicalVehicleLogOnRequestStructure(**{
+                'netex:VehicleRef': vehicle_ref
+            })
+
+            response: TechnicalVehicleLogOnResponseStructure = self._request('pub_itcs_inbox', log_on_message.xml())
+            if response.technical_vehicle_log_on_response_error is not None:
+                response_code: str = response.technical_vehicle_log_on_response_error.technical_vehicle_log_on_response_code
+                raise RuntimeError(f"Failed to log on vehicle {vehicle_ref}, Response: {response_code}!")
+            else:
+                logging.info(f"{self.instance_id}/{self.__class__.__name__}: Vehicle {vehicle_ref} successfully logged on.")
+
+    def log_off_vehicle(self, vehicle_ref: str) -> bool:
+        if self._role == IomRole.VEHICLE:
+            vehicle_ref: VehicleRef = VehicleRef(**{'#text': vehicle_ref})
+            
+            log_off_message: TechnicalVehicleLogOffRequestStructure = TechnicalVehicleLogOffRequestStructure(**{
+                'netex:VehicleRef': vehicle_ref
+            })
+
+            response: TechnicalVehicleLogOffResponseStructure = self._request('pub_itcs_inbox', log_off_message.xml())
+            if response.technical_vehicle_log_off_response_error is not None:
+                response_code: str = response.technical_vehicle_log_off_response_error.technical_vehicle_log_off_response_code
+                raise RuntimeError(f"Failed to log on vehicle {vehicle_ref}, Response: {response_code}!")
+            else:
+                logging.info(f"{self.instance_id}/{self.__class__.__name__}: Vehicle {vehicle_ref} successfully logged off.")
+
+    def publish_gnss_position_update(self, vehicle_ref: str, latitude: float, longitude: float, timestamp: datetime) -> None:
+        if self._role == IomRole.VEHICLE:
+            timestamp_of_measurement: str = timestamp.replace(microsecond=0).isoformat()
+            
+            gnss_physical_position_structure: GnssPhysicalPositionDataStructure = GnssPhysicalPositionDataStructure(
+                PublisherId=self._mqtt._client_id,
+                TimestampOfMeasurement=timestamp_of_measurement,
+                GnssPhysicalPosition=GnssPhysicalPosition(
+                    WGS84PhysicalPosition=WGS84PhysicalPosition(
+                        Latitude=latitude,
+                        Longitude=longitude
+                    )
+                )
+            )
+
+            self._publish(
+                'pub_vehicle_physical_position', 
+                gnss_physical_position_structure.xml(), 
+                retain=True,
+                vehicle_ref=vehicle_ref
+            )
+        else:
+            raise RuntimeError("Only clients with role type VEHICLE are allowed to publish GNSS position updates.")
+    
     def _on_connect(self, client, userdata, flags, rc, properties):
         if not rc.is_failure:
             for topic, qos in self.get_subscribed_topics():
