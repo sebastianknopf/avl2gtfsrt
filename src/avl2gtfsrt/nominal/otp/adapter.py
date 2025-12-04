@@ -77,13 +77,27 @@ class OtpAdapter(BaseAdapter):
                 
                 # check some prequisites here, we don't want invalid trips at all ...
                 if 'serviceJourney' not in td or 'estimatedCalls' not in td['serviceJourney']:
-                    logging.warning(f"{self.__class__.__name__}: Trip result contains no serviceJourney data and was discarded.")
-
+                    logging.debug(f"{self.__class__.__name__}: Trip result contains no serviceJourney data and was discarded.")
+                    continue
+                
+                # OTP sometimes returns journeys without estimated calls, when a trip starts at the next operating day
+                # remove them
                 if len(td['serviceJourney']['estimatedCalls']) == 0:
-                    logging.warning(f"{self.__class__.__name__}: Trip {td['serviceJourney']['id']} contains no estimated calls and was discarded.")
-
+                    logging.debug(f"{self.__class__.__name__}: Trip {td['serviceJourney']['id']} contains no estimated calls and was discarded.")
+                    continue
+                
+                # OTP returns the journeys with the correct operation day, but the arrival times and departure times
+                # are always in the context of the current day, so we don't want to see them in matching.
+                # Only exception: A trip starts at the former operation day and runs after midnight!
+                trip_date: datetime = datetime.strptime(td['date'], '%Y-%m-%d').date()
+                current_date: datetime = datetime.now().date()
+                if trip_date != current_date and trip_date != current_date - timedelta(days=1):
+                    logging.debug(f"{self.__class__.__name__}: Trip {td['serviceJourney']['id']} runs on the following operation day and was discarded.")
+                    continue
+                
                 if 'pointsOnLink' not in td['serviceJourney'] or 'points' not in td['serviceJourney']['pointsOnLink']:
-                    logging.warning(f"{self.__class__.__name__}: Trip {td['serviceJourney']['id']} contains no shape data and was discarded.")
+                    logging.debug(f"{self.__class__.__name__}: Trip {td['serviceJourney']['id']} contains no shape data and was discarded.")
+                    continue
                 
                 # here we go, the trip is valid, so process all other information into a dataclass
                 stop_times: list[StopTime] = list()

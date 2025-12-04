@@ -29,19 +29,19 @@ class TemporalMatch:
         current_timestamp: int = int(datetime.now(timezone.utc).replace(microsecond=0, second=0).timestamp())
 
         # check whether the trip should run currently
-        first_departure: int = self._stop_times[0].departure_timestamp
-        last_departure: int = self._stop_times[-1].departure_timestamp
+        first_departure_timestamp: int = self._stop_times[0].departure_timestamp
+        last_departure_timestamp: int = self._stop_times[-1].departure_timestamp
 
-        if current_timestamp < first_departure:
+        if current_timestamp <= first_departure_timestamp:
             self.time_based_progress_percentage = 0.0
             self.time_based_current_stop_sequence = 0
             self.time_based_next_stop_sequence = 0
             return
         
-        if current_timestamp > last_departure:
+        if current_timestamp >= last_departure_timestamp:
             self.time_based_progress_percentage = 100.0
-            self.time_based_current_stop_sequence = 0
-            self.time_based_next_stop_sequence = 0
+            self.time_based_current_stop_sequence = self._stop_times[-2].stop_sequence
+            self.time_based_next_stop_sequence = self._stop_times[-1].stop_sequence
             return
 
         # calculate the current percentual progress of the trip 
@@ -66,13 +66,13 @@ class TemporalMatch:
                 this_projection: float = self._stop_projections_on_trip_shape[this_stop_time.stop_sequence]
                 next_projection: float = self._stop_projections_on_trip_shape[next_stop_time.stop_sequence]
                 
-                self.time_based_progress_percentage: float = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
+                self.time_based_progress_percentage = (this_projection + (next_projection - this_projection) * time_based_progress) / self._trip_shape.length * 100.0
                 self.time_based_progress_percentage = clamp(self.time_based_progress_percentage, 0.0, 100.0)
 
                 self.time_based_current_stop_sequence: int = this_stop_time.stop_sequence
                 self.time_based_next_stop_sequence: int = next_stop_time.stop_sequence
-                
-                break        
+
+                break  
 
     def calculate_match_score(self, spatial_progress_percentage: float) -> float:
         
@@ -137,15 +137,13 @@ class TemporalMatch:
                 # monitor delay between nominal next stop and AVL-based next stop
                 # calculate the difference based on the departure times
                 # TODO: implement a better delay prediciton here ... this is quite... basic
+                current_timestamp: int = int(datetime.now(timezone.utc).timestamp())
                 actual_next_stop_time: StopTime|None = next((s for s in self._stop_times if s.stop_sequence == trip_metrics.next_stop_sequence), None)
                 nominal_next_stop_time: StopTime|None = next((s for s in self._stop_times if s.stop_sequence == self.time_based_next_stop_sequence), None)
                 
-                if actual_next_stop_time is not None and nominal_next_stop_time is not None:
-                    trip_metrics.current_delay = int(nominal_next_stop_time.departure_timestamp - actual_next_stop_time.departure_timestamp)
+                if actual_next_stop_time is not None:
+                    trip_metrics.current_delay = current_timestamp - actual_next_stop_time.departure_timestamp
                     
-                    if trip_metrics.current_delay <= (-15 * 60):
-                        logging.warning(f"{self.__class__.__name__}: Trip has a significant negative delay! Compared actual next stop time {actual_next_stop_time.departure_timestamp} with nominal next stop time {nominal_next_stop_time.departure_timestamp}.")
-
                 break
 
         return trip_metrics
