@@ -29,12 +29,13 @@ class Worker:
         self._executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=10)
 
         # create IoM instance
+        instance_id: str = os.getenv('A2G_INSTANCE_ID', 'default')
         organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
         itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
         self._iom: IomClient = IomClient(
             config={
-                'instance_id': '',
+                'instance_id': instance_id,
                 'organisation_id': organisation_id,
                 'itcs_id': itcs_id,
                 'host': os.getenv('A2G_WORKER_MQTT_HOST', 'localhost'),
