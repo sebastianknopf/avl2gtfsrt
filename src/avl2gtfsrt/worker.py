@@ -6,7 +6,7 @@ import time
 
 from concurrent.futures import ThreadPoolExecutor
 
-from avl2gtfsrt.iom.client import IomClient
+from avl2gtfsrt.iom.client import IomClient, IomRole
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class Worker:
@@ -33,8 +33,16 @@ class Worker:
         itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
         self._iom: IomClient = IomClient(
-            organisation_id=organisation_id,
-            itcs_id=itcs_id,
+            config={
+                'instance_id': '',
+                'organisation_id': organisation_id,
+                'itcs_id': itcs_id,
+                'host': os.getenv('A2G_WORKER_MQTT_HOST', 'localhost'),
+                'port': int(os.getenv('A2G_WORKER_MQTT_PORT', '1883')),
+                'username': os.getenv('A2G_WORKER_MQTT_USERNAME', ''),
+                'password': os.getenv('A2G_WORKER_MQTT_PASSWORD', '')
+            },
+            iom_role=IomRole.ITCS,
             object_storage=self._object_storage,
             thread_executor=self._executor
         )

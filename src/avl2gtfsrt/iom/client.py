@@ -6,16 +6,14 @@ import string
 
 from concurrent.futures import ThreadPoolExecutor
 from paho.mqtt import client as mqtt
+from threading import Condition
 from threading import Lock
 from queue import Queue
 
 from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.serialization import Serializable
-from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure, AbstractMessageStructure, AbstractDataPublicationStructure
-from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOnRequestStructure
-from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure
-from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
+from avl2gtfsrt.vdv.vdv435 import *
 from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
 from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOffHandler
 from avl2gtfsrt.iom.positioninghandler import GnssPhysicalPositionHandler
@@ -26,11 +24,18 @@ class TopicLevelStructureDict(dict):
     def __missing__(self, key):
         return f"{{{key}}}"
     
+class IomRole:
+    ITCS = 1
+    VEHICLE = 2
+    
 class IomClient:
 
-    def __init__(self, organisation_id: str, itcs_id: str, object_storage: ObjectStorage, thread_executor: ThreadPoolExecutor) -> None:
-        self._organisation_id = organisation_id
-        self._itcs_id = itcs_id
+    def __init__(self, config: dict, iom_role: IomRole, object_storage: ObjectStorage, thread_executor: ThreadPoolExecutor) -> None:
+        self.instance_id: str = config['instance_id']
+        self.organisation_id = config['organisation_id']
+        self.itcs_id = config['itcs_id']
+
+        self._role = iom_role
         self._storage = object_storage
         self._executor = thread_executor
 
@@ -39,13 +44,16 @@ class IomClient:
         self._vehicle_queues: dict[str, Queue] = dict()
         self._lock = Lock()
 
+        # correlation ID and latch for running requests via MQTT
+        self._correlation_id: str|None = None
+        self._correlation_result: str|None = None
+        self._correlation_condition: Condition = Condition()
+
         # create MQTT client
-        client_default_suffix: str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        client_suffix: str = os.getenv('A2G_WORKER_MQTT_CLIENT_SUFFIX', client_default_suffix)
         self._mqtt: mqtt.Client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2, 
             protocol=mqtt.MQTTv5, 
-            client_id=f"avl2gtfsrt-IoM-{client_suffix}"
+            client_id=f"avl2gtfsrt-IoM-{self.organisation_id}"
         )
 
         # create TLS topic structures
@@ -53,18 +61,36 @@ class IomClient:
         self._tls_pub_vehicle_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/{data_version}/Inbox/VehicleInbox/Country/de/any/Organisation/{organisation_id}/any/VehicleId/{vehicle_id}/CorrelationId/{correlation_id}/ResponseData", 2)
         self._tls_sub_vehicle_physical_position: tuple[str, int] = ("IoM/1.0/DataVersion/+/Country/de/+/Organisation/{organisation_id}/+/Vehicle/+/+/PhysicalPosition/#", 0)
 
+        self._tls_pub_itcs_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/any/Inbox/ItcsInbox/Country/de/any/Organisation/{organisation_id}/any/ItcsId/{itcs_id}/CorrelationId/{correlation_id}/RequestData", 2)
+        self._tls_sub_vehicle_inbox: tuple[str, int] = ("IoM/1.0/DataVersion/+/Inbox/VehicleInbox/Country/de/+/Organisation/{organisation_id}/+/VehicleId/+/CorrelationId/+/ResponseData", 2)
+        self._tls_pub_vehicle_physical_position: tuple[str, int] = ("IoM/1.0/DataVersion/any/Country/de/any/Organisation/{organisation_id}/any/Vehicle/{vehicle_ref}/any/PhysicalPosition/GnssPhysicalPositionData", 0)
+        
         # keep track of all global placeholders here
         # used in _get_tls method later
         self._tls_dict: TopicLevelStructureDict = TopicLevelStructureDict()
-        self._tls_dict['organisation_id'] = self._organisation_id
-        self._tls_dict['itcs_id'] = self._itcs_id
+        self._tls_dict['organisation_id'] = self.organisation_id
+        self._tls_dict['itcs_id'] = self.itcs_id
+
+        # set MQTT parameters
+        self._mqtt_host: str|None = config['host'] if 'host' in config else None
+        self._mqtt_port: str|None = config['port'] if 'port' in config else '1883'
+        self._mqtt_username: str|None = config['username'] if 'username' in config else None
+        self._mqtt_password: str|None = config['password'] if 'password' in config else None
+        
+        if self._mqtt_host is None:
+            raise RuntimeError('MQTT host is not configured. Please configure a MQTT hostname or IP address.')
 
     def get_subscribed_topics(self) -> tuple[str, int]:
-        subscribed_topics: list = [
-            self._get_tls('sub_itcs_inbox'),
-            self._get_tls('sub_vehicle_physical_position')
+        if self._role == IomRole.ITCS:
+            subscribed_topics: list = [
+                self._get_tls('sub_itcs_inbox'),
+                self._get_tls('sub_vehicle_physical_position')
+            ]
+        elif self._role == IomRole.VEHICLE:
+            subscribed_topics: list = [
+            self._get_tls('sub_vehicle_inbox')
         ]
-        
+
         return subscribed_topics
     
     def start(self) -> None:
@@ -74,33 +100,27 @@ class IomClient:
         self._mqtt.on_disconnect = self._on_disconnect
 
         # set username and password if provided
-        mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)
-        mqtt_password: str = os.getenv('A2G_WORKER_MQTT_PASSWORD', None)
-        if mqtt_username is not None and mqtt_password is not None:
-            self._mqtt.username_pw_set(username=mqtt_username, password=mqtt_password)
+        if self._mqtt_username is not None and self._mqtt_password is not None:
+            self._mqtt.username_pw_set(username=self._mqtt_username, password=self._mqtt_password)
 
-        # connect to MQTT broker
-        mqtt_host: str = os.getenv('A2G_WORKER_MQTT_HOST', None)
-        mqtt_port: str = os.getenv('A2G_WORKER_MQTT_PORT', '1883')
-
-        if mqtt_host is None:
-            raise RuntimeError('MQTT host is not configured. Please configure a MQTT hostname or IP address.')
-
-        logging.info(f"{self.__class__.__name__}: Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
-        self._mqtt.connect(mqtt_host, int(mqtt_port))
+        # finally connect to the broker ...
+        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Connecting to MQTT broker at {self._mqtt_host}:{self._mqtt_port} ...")
+        self._mqtt.connect(self._mqtt_host, int(self._mqtt_port))
         
         self._mqtt.loop_start()
     
     def process(self, topic: str, payload: bytes) -> None:
-        logging.info(f"{self.__class__.__name__}: Received message in topic {topic}")
+        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Received message in topic {topic}")
         
-        if self._tls_matches(topic, 'sub_itcs_inbox'):
+        if self._role == IomRole.ITCS and self._tls_matches(topic, 'sub_itcs_inbox'):
             self._handle_request(topic, payload)
+        elif self._role == IomRole.VEHICLE and self._tls_matches(topic, 'sub_vehicle_inbox'):
+            self._handle_response(topic, payload)
         else:
             self._handle_message(topic, payload)
 
     def terminate(self) -> None:
-        logging.info(f"{self.__class__.__name__}: Shutting down MQTT connection...")
+        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Shutting down MQTT connection ...")
         self._mqtt.disconnect()
 
         self._mqtt.loop_stop()
@@ -108,8 +128,10 @@ class IomClient:
     def _on_connect(self, client, userdata, flags, rc, properties):
         if not rc.is_failure:
             for topic, qos in self.get_subscribed_topics():
-                logging.info(f"{self.__class__.__name__}: Subscribing to topic: {topic}")
+                logging.info(f"{self.instance_id}/{self.__class__.__name__}: Subscribing to topic: {topic}")
                 self._mqtt.subscribe(topic, qos=qos)
+        else:
+            raise RuntimeError("Failed to connect to the IoM MQTT broker.")
 
     def _on_message(self, client, userdata, message):
         try:
@@ -122,7 +144,7 @@ class IomClient:
 
     def _on_disconnect(self, client, userdata, flags, rc, properties):
         for topic, qos in self.get_subscribed_topics():
-            logging.info(f"{self.__class__.__name__}: Unsubscribing from topic: {topic}")
+            logging.info(f"{self.instance_id}/{self.__class__.__name__}: Unsubscribing from topic: {topic}")
             self._mqtt.unsubscribe(topic)
     
     def _handle_request(self, topic: str, payload: bytes) -> None:
@@ -197,7 +219,7 @@ class IomClient:
 
         with self._lock:
             if vehicle_ref not in self._vehicle_locks or vehicle_ref not in self._vehicle_queues:
-                logging.error(f"{self.__class__.__name__}: Vehicle not registered in monitoring yet... Make sure the vehicle is technically logged on.")
+                logging.error(f"{self.instance_id}/{self.__class__.__name__}: Vehicle not registered in monitoring yet... Make sure the vehicle is technically logged on.")
                 return
 
             if not self._vehicle_locks[vehicle_ref]:
@@ -213,7 +235,7 @@ class IomClient:
                 # the vehicle is currently processed by a thread
                 # put the message into the queue
                 # it will be executed once the current thread terminates
-                logging.info(f"{self.__class__.__name__}: Vehicle is blocked currently, enqueuing message ...")
+                logging.info(f"{self.instance_id}/{self.__class__.__name__}: Vehicle is blocked currently, enqueuing message ...")
                 self._vehicle_queues[vehicle_ref].put((
                     vehicle_ref,
                     topic, 
@@ -291,4 +313,37 @@ class IomClient:
             retain
         )
 
-        logging.info(f"{self.__class__.__name__}: Published message to topic {tls_str}")
+        logging.info(f"{self.instance_id}/{self.__class__.__name__}: Published message to topic {tls_str}")
+
+    def _request(self, tls_name: str, payload: str, **arguments) -> AbstractResponseStructure:
+        if self._correlation_id is None:
+            self._correlation_id = '1'
+        
+        self._publish(tls_name, payload, False, correlation_id=self._correlation_id)
+
+        with self._correlation_condition:
+            self._correlation_condition.wait(timeout=30)   
+
+            if self._correlation_result is not None:
+                response: AbstractResponseStructure = Serializable.load(self._correlation_result)
+                return response
+            else:
+                self._correlation_id = None
+                self._correlation_result = None
+                
+                raise RuntimeError(f"No valid response to request with correlation ID {self._correlation_id}!")
+    
+    def _handle_reponse(self, topic: str, payload: bytes) -> None:
+        # lookup for correlation ID in the topic
+        correlation_id: str = get_tls_value(topic, 'CorrelationId')
+
+        # check whether correlation ID matches to the last request
+        if correlation_id == self._correlation_id:
+
+            # set result
+            self._correlation_id = None
+            self._correlation_result = payload
+
+            # raise condition update
+            with self._correlation_condition:
+                self._correlation_condition.notify()
