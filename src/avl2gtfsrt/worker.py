@@ -6,7 +6,11 @@ import time
 
 from concurrent.futures import ThreadPoolExecutor
 
-from avl2gtfsrt.iom.implementation import IoM
+from avl2gtfsrt.iom.client import IomClient, IomRole
+from avl2gtfsrt.vdv.vdv435 import *
+from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
+from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOffHandler
+from avl2gtfsrt.iom.positioninghandler import GnssPhysicalPositionHandler
 from avl2gtfsrt.objectstorage import ObjectStorage
 
 class Worker:
@@ -29,15 +33,27 @@ class Worker:
         self._executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=10)
 
         # create IoM instance
+        instance_id: str = os.getenv('A2G_INSTANCE_ID', 'default')
         organisation_id: str = os.getenv('A2G_ORGANISATION_ID', 'TEST')
         itcs_id: str = os.getenv('A2G_ITCS_ID', '1')
 
-        self._iom: IoM = IoM(
-            organisation_id=organisation_id,
-            itcs_id=itcs_id,
-            object_storage=self._object_storage,
+        self._iom: IomClient = IomClient(
+            config={
+                'instance_id': instance_id,
+                'organisation_id': organisation_id,
+                'itcs_id': itcs_id,
+                'host': os.getenv('A2G_WORKER_MQTT_HOST', 'localhost'),
+                'port': int(os.getenv('A2G_WORKER_MQTT_PORT', '1883')),
+                'username': os.getenv('A2G_WORKER_MQTT_USERNAME', ''),
+                'password': os.getenv('A2G_WORKER_MQTT_PASSWORD', '')
+            },
+            iom_role=IomRole.ITCS,
             thread_executor=self._executor
         )
+
+        self._iom.on_technical_vehicle_log_on = self._iom_technical_vehicle_log_on
+        self._iom.on_technical_vehicle_log_off = self._iom_technical_vehicle_log_off
+        self._iom.on_gnss_position_update = self._iom_gnss_position_update
 
         self._should_run = threading.Event()
         self._should_run.set()
@@ -76,3 +92,15 @@ class Worker:
             self._object_storage.close()
 
             logging.info(f"{self.__class__.__name__}: Worker shutdown complete.")
+
+    def _iom_technical_vehicle_log_on(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
+        handler: TechnicalVehicleLogOnHandler = TechnicalVehicleLogOnHandler(self._object_storage)
+        return handler.handle_request(msg)
+    
+    def _iom_technical_vehicle_log_off(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
+        handler: TechnicalVehicleLogOffHandler = TechnicalVehicleLogOffHandler(self._object_storage)
+        return handler.handle_request(msg)
+    
+    def _iom_gnss_position_update(self, topic: str, msg: AbstractBasicStructure) -> None:
+        handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._object_storage)
+        handler.handle(topic, msg)

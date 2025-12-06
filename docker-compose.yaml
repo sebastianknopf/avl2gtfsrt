@@ -21,6 +21,7 @@ services:
     command: "python -m avl2gtfsrt worker"
     environment:
       - A2G_DEBUG
+      - A2G_INSTANCE_ID
       - A2G_ORGANISATION_ID
       - A2G_ITCS_ID
       - A2G_MONGODB_USERNAME
@@ -29,7 +30,6 @@ services:
       - A2G_WORKER_MQTT_PORT
       - A2G_WORKER_MQTT_USERNAME
       - A2G_WORKER_MQTT_PASSWORD
-      - A2G_WORKER_MQTT_CLIENT_SUFFIX
       - A2G_NOMINAL_ADAPTER_TYPE
       - A2G_NOMINAL_ADAPTER_CONFIG
       - A2G_NOMINAL_CACHING_ENABLED
