@@ -6,16 +6,13 @@ from datetime import datetime
 from paho.mqtt import client as mqtt
 from threading import Condition
 from threading import Lock
+from typing import Callable
 from queue import Queue
 
 from avl2gtfsrt.common.env import is_debug
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.serialization import Serializable
 from avl2gtfsrt.vdv.vdv435 import *
-from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
-from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOffHandler
-from avl2gtfsrt.iom.positioninghandler import GnssPhysicalPositionHandler
-from avl2gtfsrt.objectstorage import ObjectStorage
 
 
 class TopicLevelStructureDict(dict):
@@ -28,13 +25,17 @@ class IomRole:
     
 class IomClient:
 
-    def __init__(self, config: dict, iom_role: IomRole, object_storage: ObjectStorage, thread_executor: ThreadPoolExecutor) -> None:
+    def __init__(self, config: dict, iom_role: IomRole, thread_executor: ThreadPoolExecutor) -> None:
         self.instance_id: str = config['instance_id']
         self.organisation_id = config['organisation_id']
         self.itcs_id = config['itcs_id']
 
+        # define callback methods for external usage
+        self.on_technical_vehicle_log_on: Callable[[AbstractBasicStructure], AbstractBasicStructure]|None = None
+        self.on_technical_vehicle_log_off: Callable[[AbstractBasicStructure], AbstractBasicStructure]|None = None
+        self.on_gnss_position_update: Callable[[str, AbstractBasicStructure], None]|None = None
+
         self._role = iom_role
-        self._storage = object_storage
         self._executor = thread_executor
 
         # setup internal thread handling members
@@ -133,7 +134,7 @@ class IomClient:
 
         self._mqtt.loop_stop()
 
-    def log_on_vehicle(self, vehicle_ref: str) -> bool:
+    def technical_log_on_vehicle(self, vehicle_ref: str) -> bool:
         if self._role == IomRole.VEHICLE:
             vehicle_ref: VehicleRef = VehicleRef(**{'#text': vehicle_ref})
             
@@ -148,7 +149,7 @@ class IomClient:
             else:
                 logging.info(f"{self.instance_id}/{self.__class__.__name__}: Vehicle {vehicle_ref} successfully logged on.")
 
-    def log_off_vehicle(self, vehicle_ref: str) -> bool:
+    def technical_log_off_vehicle(self, vehicle_ref: str) -> bool:
         if self._role == IomRole.VEHICLE:
             vehicle_ref: VehicleRef = VehicleRef(**{'#text': vehicle_ref})
             
@@ -257,48 +258,52 @@ class IomClient:
         
         # handle request
         if isinstance(msg, TechnicalVehicleLogOnRequestStructure):
-            handler: TechnicalVehicleLogOnHandler = TechnicalVehicleLogOnHandler(self._storage)
-            response: AbstractBasicStructure = handler.handle_request(msg)
+            if self.on_technical_vehicle_log_on is not None:
+                response: AbstractBasicStructure = self.on_technical_vehicle_log_on(msg)
 
-            vehicle_ref: str = msg.vehicle_ref.value
+                vehicle_ref: str = msg.vehicle_ref.value
 
-            with self._lock:
-                # register vehicle or reset all monitoring lists  
-                if vehicle_ref not in self._vehicle_locks:
-                    self._vehicle_locks[vehicle_ref] = False
+                with self._lock:
+                    # register vehicle or reset all monitoring lists  
+                    if vehicle_ref not in self._vehicle_locks:
+                        self._vehicle_locks[vehicle_ref] = False
 
-                if vehicle_ref not in self._vehicle_queues:
-                    self._vehicle_queues[vehicle_ref] = Queue()
+                    if vehicle_ref not in self._vehicle_queues:
+                        self._vehicle_queues[vehicle_ref] = Queue()
 
-            self._publish(
-                'pub_vehicle_inbox', 
-                response.xml(),
-                data_version=data_version,
-                vehicle_id=vehicle_ref,
-                correlation_id=correlation_id
-            )
+                self._publish(
+                    'pub_vehicle_inbox', 
+                    response.xml(),
+                    data_version=data_version,
+                    vehicle_id=vehicle_ref,
+                    correlation_id=correlation_id
+                )
+            else: 
+                logging.error(f"{self.instance_id}/{self.__class__.__name__}: No handler defined for TechnicalVehicleLogOnRequestStructure messages.")
 
         elif isinstance(msg, TechnicalVehicleLogOffRequestStructure):
-            handler: TechnicalVehicleLogOffHandler = TechnicalVehicleLogOffHandler(self._storage)
-            response: AbstractBasicStructure = handler.handle_request(msg)
+            if self.on_technical_vehicle_log_off is not None:
+                response: AbstractBasicStructure = self.on_technical_vehicle_log_off(msg)
 
-            vehicle_ref: str = msg.vehicle_ref.value
+                vehicle_ref: str = msg.vehicle_ref.value
 
-            with self._lock:
-                # reset all monitoring lists
-                if vehicle_ref in self._vehicle_locks:
-                    self._vehicle_locks[vehicle_ref] = False
+                with self._lock:
+                    # reset all monitoring lists
+                    if vehicle_ref in self._vehicle_locks:
+                        self._vehicle_locks[vehicle_ref] = False
 
-                if vehicle_ref in self._vehicle_queues:
-                    self._vehicle_queues[vehicle_ref] = Queue()
+                    if vehicle_ref in self._vehicle_queues:
+                        self._vehicle_queues[vehicle_ref] = Queue()
 
-            self._publish(
-                'pub_vehicle_inbox', 
-                response.xml(),
-                data_version=data_version,
-                vehicle_id=vehicle_ref,
-                correlation_id=correlation_id
-            )
+                self._publish(
+                    'pub_vehicle_inbox', 
+                    response.xml(),
+                    data_version=data_version,
+                    vehicle_id=vehicle_ref,
+                    correlation_id=correlation_id
+                )
+            else: 
+                logging.error(f"{self.instance_id}/{self.__class__.__name__}: No handler defined for TechnicalVehicleLogOffRequestStructure messages.")
 
     def _handle_reponse(self, topic: str, payload: bytes) -> None:
         # lookup for correlation ID in the topic
@@ -336,7 +341,7 @@ class IomClient:
                 # mark vehicle as locked and put the action into the executor
                 self._vehicle_locks[vehicle_ref] = True
                 self._executor.submit(
-                    self._handle_message_executor,
+                    self._handle_message_on_executor,
                     vehicle_ref,
                     topic,
                     msg
@@ -352,7 +357,7 @@ class IomClient:
                     msg
                 ))
 
-    def _handle_message_executor(self, vehicle_ref: str, topic: str, msg: AbstractBasicStructure) -> None:
+    def _handle_message_on_executor(self, vehicle_ref: str, topic: str, msg: AbstractBasicStructure) -> None:
         
         # run this in a separate try-catch clause
         # as the main thread does not see exceptions occured in ThreadPoolExecutor
@@ -360,8 +365,10 @@ class IomClient:
             
             # handle incoming GnssPhysicalPositionData update
             if isinstance(msg, GnssPhysicalPositionDataStructure):
-                handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._storage)
-                handler.handle(topic, msg)
+                if self.on_gnss_position_update is not None:
+                    self.on_gnss_position_update(topic, msg)
+                else:
+                    logging.warning(f"{self.instance_id}/{self.__class__.__name__}: No handler defined for GnssPhysicalPositionDataStructure messages. Message will be ignored.")
 
             # after handling release the current vehicle
             with self._lock:
@@ -370,7 +377,7 @@ class IomClient:
                 if not self._vehicle_queues[vehicle_ref].empty():
                     next_message: tuple = self._vehicle_queues[vehicle_ref].get()
                     self._executor.submit(
-                        self._handle_message_executor,
+                        self._handle_message_on_executor,
                         *next_message
                     )
                 else:
