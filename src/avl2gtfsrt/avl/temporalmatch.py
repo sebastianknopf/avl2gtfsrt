@@ -1,6 +1,7 @@
 import logging
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from shapely.geometry import LineString, Point
 
 from avl2gtfsrt.common.shared import web_mercator, clamp
@@ -25,8 +26,8 @@ class TemporalMatch:
         self.time_based_progress_percentage: float = 0.0
         self.match_score: float = 0.0
 
-        # do not use unixtimestamp here, as we need the timestamp in minutes, without seconds!!!
-        current_timestamp: int = int(datetime.now(timezone.utc).replace(microsecond=0, second=0).timestamp())
+        # do not use the whole unixtimestamp here, as we need the timestamp in minutes, without seconds!!!
+        current_timestamp: int = int(datetime.now(ZoneInfo("Europe/Berlin")).replace(microsecond=0, second=0).timestamp())
 
         # check whether the trip should run currently
         first_departure_timestamp: int = self._stop_times[0].departure_timestamp
