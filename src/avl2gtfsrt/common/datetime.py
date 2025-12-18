@@ -1,21 +1,10 @@
 from datetime import datetime
 
-def get_operation_day(operation_day: str) -> str:
-    
-    # remove hyphens (-)
-    return operation_day.replace("-", "")
-
-def get_operation_time(operation_day: str, iso_timestamp: str) -> str:
-    
-    # calculate difference between operation day start and trip start timestamp
-    dt: datetime = datetime.fromisoformat(iso_timestamp)
-    ref: datetime = datetime.fromisoformat(operation_day).replace(tzinfo=dt.tzinfo)
-
-    diff_seconds: int = (dt - ref).total_seconds()
+def get_operation_day_time_str(seconds_after_midnight: int) -> str:
 
     # re-calculate operation day start time
-    hours = int(diff_seconds // 3600)
-    minutes = int((diff_seconds % 3600) // 60)
-    seconds = int(diff_seconds % 60)
+    hours = int(seconds_after_midnight // 3600)
+    minutes = int((seconds_after_midnight % 3600) // 60)
+    seconds = int(seconds_after_midnight % 60)
 
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
