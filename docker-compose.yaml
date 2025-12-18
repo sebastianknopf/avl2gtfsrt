@@ -21,9 +21,11 @@ services:
     command: "python -m avl2gtfsrt worker"
     environment:
       - A2G_DEBUG
+      - A2G_TIMEZONE
       - A2G_INSTANCE_ID
       - A2G_ORGANISATION_ID
       - A2G_ITCS_ID
+      - A2G_OPERATING_DAY_END
       - A2G_MONGODB_USERNAME
       - A2G_MONGODB_PASSWORD
       - A2G_WORKER_MQTT_HOST

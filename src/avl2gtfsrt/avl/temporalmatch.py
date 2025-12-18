@@ -1,4 +1,5 @@
 import logging
+import os
 
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -27,7 +28,7 @@ class TemporalMatch:
         self.match_score: float = 0.0
 
         # do not use the whole unixtimestamp here, as we need the timestamp in minutes, without seconds!!!
-        current_timestamp: int = int(datetime.now(ZoneInfo("Europe/Berlin")).replace(microsecond=0, second=0).timestamp())
+        current_timestamp: int = int(datetime.now(ZoneInfo(os.getenv('A2G_TIMEZONE', 'Europe/Berlin'))).replace(microsecond=0, second=0).timestamp())
 
         # check whether the trip should run currently
         first_departure_timestamp: int = self._stop_times[0].departure_timestamp

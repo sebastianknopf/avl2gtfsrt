@@ -1,4 +1,5 @@
 import logging
+import os
 import requests
 
 from datetime import datetime, timedelta
@@ -161,7 +162,7 @@ class OtpAdapter(BaseAdapter):
     
     def get_trip_candidates(self, lat: float, lon: float) -> list[Trip]:
         
-        reference_timestamp: datetime = datetime.now(ZoneInfo("Europe/Berlin")).replace(microsecond=0)
+        reference_timestamp: datetime = datetime.now(ZoneInfo(os.getenv('A2G_TIMEZONE', 'Europe/Berlin'))).replace(microsecond=0)
         reference_timestamp = reference_timestamp - timedelta(minutes=15)
 
         trips: list[Trip] = list()
