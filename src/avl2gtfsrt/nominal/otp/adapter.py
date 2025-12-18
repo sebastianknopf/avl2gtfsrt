@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from avl2gtfsrt.common.env import is_debug
-from avl2gtfsrt.common.datetime import get_operation_day_time_str
+from avl2gtfsrt.common.datetime import get_operating_day_time_str, get_operating_day_seconds
 from avl2gtfsrt.model.types import StopTime, Stop, Trip, TripDescriptor
 from avl2gtfsrt.nominal.baseadapter import BaseAdapter
 
@@ -117,15 +117,25 @@ class OtpAdapter(BaseAdapter):
         }
         """
 
+        # check whether the current timestamp is before the end of the last operating day
+        # if so, use the last calendar day as reference date
+        reference_timestamp_midnight: int = int(reference_timestamp.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+        operating_day_end_seconds: int = get_operating_day_seconds(os.getenv('A2G_OPERATING_DAY_END', '27:00:00')) - 86400
+
+        if reference_timestamp.timestamp() <= reference_timestamp_midnight + operating_day_end_seconds:
+            reference_date: datetime = reference_timestamp - timedelta(days=1)
+        else:
+            reference_date: datetime = reference_timestamp
+
+        # construct variables and load data
         variables: dict = {
             'stopId': stop_id,
-            'date': reference_timestamp.strftime('%Y-%m-%d')
+            'date': reference_date.strftime('%Y-%m-%d')
         }
-
-        reference_timestamp_midnight: int = int(reference_timestamp.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
 
         data: dict = self._request(query, variables)
 
+        # process everything here
         if data is not None and 'data' in data and 'stop' in data['data'] and data['data']['stop'] is not None and len(data['data']['stop'].get('stoptimesForServiceDate', [])) > 0:
             stoptimes_for_service_date: dict = data['data']['stop'].get('stoptimesForServiceDate')
 
@@ -202,7 +212,7 @@ class OtpAdapter(BaseAdapter):
                 descriptor=TripDescriptor(
                     trip_id=td['gtfsId'],
                     route_id=td['route']['gtfsId'],
-                    start_time = get_operation_day_time_str(stop_times[0].departure_timestamp - reference_timestamp_midnight),
+                    start_time = get_operating_day_time_str(stop_times[0].departure_timestamp - reference_timestamp_midnight),
                     start_date = reference_timestamp.strftime('%Y%m%d'),
                 ),
                 shape_polyline=td['tripGeometry']['points'],
