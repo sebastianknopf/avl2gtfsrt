@@ -15,7 +15,7 @@ The `avl2gtfsrt` backend service requires a MQTT broker for the VDV435 communica
 
 For loading nominal data, adapters can be implemented which load and prepare the data of the remote service. Currently, following adapters are implemented:
 
-- **OpenTripPlanner**: Uses the Transmodel V3 API to load nominal data. Adapter type is `otp`.
+- **OpenTripPlanner**: Uses the GTFS API to load nominal data. Adapter type is `otp`.
 
 ### Usage
 To run the `avl2gtfsrt` service, simply clone this repository to your destination:
@@ -42,7 +42,7 @@ A2G_WORKER_MQTT_USERNAME=username
 A2G_WORKER_MQTT_PASSWORD=password
 
 A2G_NOMINAL_ADAPTER_TYPE=otp
-A2G_NOMINAL_ADAPTER_CONFIG={"endpoint": "https://otp.yourdomain.com/otp/transmodel/v3", "username": "username", "password": "password"}
+A2G_NOMINAL_ADAPTER_CONFIG={"endpoint": "https://otp.yourdomain.com/otp/gtfs/v1", "username": "username", "password": "password"}
 A2G_NOMINAL_CACHING_ENABLED=true
 
 A2G_SERVER_TIMEZONE=Europe/Berlin
