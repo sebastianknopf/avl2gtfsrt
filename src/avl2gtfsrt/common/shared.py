@@ -18,8 +18,23 @@ def unixtimestamp(iso_str: str|None = None) -> int:
 def uid() -> str:
     return str(uuid.uuid4())
 
-def web_mercator(shape: object) -> object:
-    return transform(Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:3857'), always_xy=True).transform, shape)
+def web_mercator(geometry: object) -> object:
+    transformer = Transformer.from_crs(
+        CRS("EPSG:4326"),
+        CRS("EPSG:3857"),
+        always_xy=True
+    )
+
+    return transform(transformer.transform, geometry)
+
+def wgs_84(geometry: object) -> object:
+    transformer = Transformer.from_crs(
+        CRS("EPSG:3857"),
+        CRS("EPSG:4326"),
+        always_xy=True
+    )
+
+    return transform(transformer.transform, geometry)
 
 def clamp(value: float|int, min_value: float|int, max_value: float|int) -> float|int:
     return max(min_value, min(max_value, value))
