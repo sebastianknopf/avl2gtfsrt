@@ -1,7 +1,7 @@
 import logging
 import polyline
 
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 from time import time
 
 from avl2gtfsrt.avl.spatialmatch import SpatialMatch
@@ -14,11 +14,12 @@ from avl2gtfsrt.objectstorage import ObjectStorage
 
 class AvlMatcher:
 
-    def __init__(self, object_storage: ObjectStorage, trip_candidates: list[Trip], snapping_enabled: bool = True) -> None:
+    def __init__(self, object_storage: ObjectStorage, trip_candidates: list[Trip], snapping_enabled: bool = True, snapping_distance_meters: int = 50) -> None:
         self._storage = object_storage
         self._trip_candidates = trip_candidates
 
         self._snapping_enabled = snapping_enabled
+        self._snapping_distance_meters = snapping_distance_meters
 
         self.matched_vehicle_position: GnssPosition|None = None
 
@@ -143,9 +144,16 @@ class AvlMatcher:
                     spatial_match_score: float = spatial_match.calculate_match_score(movement)
                     if spatial_match_score > 0.0:
                         trip_matches[trip_candidate.descriptor.trip_id] = True
+                    else:
+                        trip_matches[trip_candidate.descriptor.trip_id] = False
 
-                        if self._snapping_enabled:
-                            snapped_point: Point =trip_shape.interpolate(spatial_match.spatial_progress_distance)
+                    # snap position to shape if enabled
+                    if self._snapping_enabled:
+                        web_mercator_position: Point = web_mercator(Point(gnss_positions[-1].longitude, gnss_positions[-1].latitude))
+                        shape_distance: float = web_mercator_position.distance(trip_shape)
+
+                        if shape_distance < self._snapping_distance_meters:
+                            snapped_point: Point = trip_shape.interpolate(spatial_match.spatial_progress_distance)
                             snapped_point = wgs_84(snapped_point)
 
                             self.matched_vehicle_position = GnssPosition(
@@ -155,11 +163,8 @@ class AvlMatcher:
                             )
 
                             logging.info(f"{self.__class__.__name__}: Snapped AVL position for vehicle {vehicle.vehicle_ref} to {snapped_point.y}, {snapped_point.x} on trip {trip_candidate.descriptor.trip_id}.")
-                        else:
-                            self.matched_vehicle_position = gnss_positions[-1]
-
                     else:
-                        trip_matches[trip_candidate.descriptor.trip_id] = False
+                        self.matched_vehicle_position = gnss_positions[-1]
                 
                 # stop time elapsed
                 end_time: float = time()

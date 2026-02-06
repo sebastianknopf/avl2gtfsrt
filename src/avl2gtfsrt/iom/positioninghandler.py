@@ -172,7 +172,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
                         [current_trip],
-                        is_set('A2G_SNAPPING_ENABLED')
+                        is_set('A2G_SNAPPING_ENABLED'),
+                        int(os.getenv('A2G_SNAPPING_DISTANCE_METERS', '50'))
                     )
 
                     trip_matches: dict[str, bool] = matcher.test(
