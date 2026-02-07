@@ -176,7 +176,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                         int(os.getenv('A2G_SNAPPING_DISTANCE_METERS', '50'))
                     )
 
-                    trip_matches: dict[str, bool] = matcher.test(
+                    trip_matches: bool = matcher.test(
                         vehicle,
                         vehicle.activity.gnss_positions
                     )
@@ -184,7 +184,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # update vehicle activity ...                    
                     # if the trip matches, reset failure counter
                     # otherwise increment the counter
-                    if trip_matches[current_trip_id]:
+                    if trip_matches:
                         vehicle.activity.trip_candidate_failures = 0
 
                         trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
