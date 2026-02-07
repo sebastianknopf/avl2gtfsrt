@@ -217,7 +217,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.gnss_positions = []
 
                     # if there're too many failures, perform a log off and delete trip descriptor
-                    max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '3'))
+                    max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '5'))
                     if vehicle.activity.trip_candidate_failures >= max_failures:
                         if vehicle.is_operationally_logged_on:
                             logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
