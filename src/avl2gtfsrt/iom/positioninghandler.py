@@ -172,8 +172,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
                         [current_trip],
-                        is_set('A2G_SNAPPING_ENABLED'),
-                        int(os.getenv('A2G_SNAPPING_DISTANCE_METERS', '50'))
+                        is_set('A2G_SHAPE_FILTER_ENABLED'),
+                        int(os.getenv('A2G_SHAPE_FILTER_DISTANCE_METERS', '50'))
                     )
 
                     trip_matches: bool = matcher.test(
@@ -197,8 +197,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     else:
                         vehicle.activity.trip_candidate_failures = vehicle.activity.trip_candidate_failures + 1
 
-                    # udpated GNSS position with snapped positon if snapping is enabled
-                    if is_set('A2G_SNAPPING_ENABLED') and matcher.matched_vehicle_position is not None:
+                    # udpated GNSS position with filtered positon if shape filtering is enabled
+                    if is_set('A2G_SHAPE_FILTER_ENABLED') and matcher.matched_vehicle_position is not None:
                         vehicle.activity.gnss_positions[-1] = matcher.matched_vehicle_position
                     
                     # if the vehicle arrived at the last stop of the journey, 

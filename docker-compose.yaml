@@ -39,8 +39,8 @@ services:
       - A2G_MATCHING_MAX_DATA_POINTS
       - A2G_MATCHING_MAX_INTERVAL
       - A2G_MATCHING_MAX_FAILURES
-      - A2G_SNAPPING_ENABLED
-      - A2G_SNAPPING_DISTANCE_METERS
+      - A2G_SHAPE_FILTER_ENABLED
+      - A2G_SHAPE_FILTER_DISTANCE_METERS
     depends_on:
       "avl2gtfsrt-mongodb":
         condition: service_healthy
