@@ -152,7 +152,7 @@ class AvlMatcher:
                     web_mercator_position: Point = web_mercator(Point(gnss_positions[-1].longitude, gnss_positions[-1].latitude))
                     shape_distance: float = web_mercator_position.distance(trip_shape)
 
-                    if shape_distance < self._snapping_distance_meters:
+                    if shape_distance < self._shape_filter_distance_meters:
                         snapped_point: Point = trip_shape.interpolate(spatial_match.spatial_progress_distance)
                         snapped_point = wgs_84(snapped_point)
 
