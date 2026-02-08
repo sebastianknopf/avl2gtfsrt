@@ -1,7 +1,10 @@
+import json
 import logging
+from avl2gtfsrt.events.eventmessage import EventMessage
 import redis
 
 from avl2gtfsrt.events.eventstreambase import EventStreamBase
+from avl2gtfsrt.events.eventmessage import EventMessage
 
 
 class EventSubscriber(EventStreamBase):
@@ -10,7 +13,7 @@ class EventSubscriber(EventStreamBase):
         super().__init__()
 
         self._redis_pubsub: redis.pubsub = self._redis.pubsub()
-        self._redis_pubsub.subscribe("heartbeat")
+        self._redis_pubsub.subscribe('avl2gtfsrt')
 
     def _loop(self) -> None:
         for msg in self._redis_pubsub.listen():
@@ -18,7 +21,10 @@ class EventSubscriber(EventStreamBase):
                 break
 
              if msg['type'] == 'message':
-                 logging.info("Received Message: " + msg['data'].decode('utf-8'))
+                try:
+                     message: EventMessage = json.loads(msg['data'].decode('utf-8'))
+                except Exception as e:
+                    logging.error(f"{self.__class__.__name__}: Failed to parse message: {e}")
 
     def stop(self) -> None:
         self._redis_pubsub.close()

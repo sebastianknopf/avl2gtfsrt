@@ -1,6 +1,6 @@
 import redis
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from threading import Thread, Event
 
 
