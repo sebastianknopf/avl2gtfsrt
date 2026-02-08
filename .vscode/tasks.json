@@ -16,6 +16,14 @@
             "group": "build",
             "problemMatcher": [],
             "isBackground": true
+        },
+        {
+            "label": "avl2gtfsrt-full-dev",
+            "type": "shell",
+            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env --profile server --profile publisher up -d --build",
+            "group": "build",
+            "problemMatcher": [],
+            "isBackground": true
         }
     ]
 }
