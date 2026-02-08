@@ -1,18 +1,26 @@
 import logging
-import zmq
+import redis
 
 from avl2gtfsrt.events.eventstreambase import EventStreamBase
 
 
 class EventSubscriber(EventStreamBase):
 
-    def __init__(self, host: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
 
-        self._zmq_socket: zmq.Socket = self._zmq.socket(zmq.SUB)
-        self._zmq_socket.connect(f"tcp://{host}:5555")
-        self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, "heartbeat")
+        self._redis_pubsub: redis.pubsub = self._redis.pubsub()
+        self._redis_pubsub.subscribe("heartbeat")
 
     def _loop(self) -> None:
-        while self._should_run.is_set():
-            logging.info("Received Message: " + self._zmq_socket.recv_string())
+        for msg in self._redis_pubsub.listen():
+             if not self._should_run.is_set():
+                break
+
+             if msg['type'] == 'message':
+                 logging.info("Received Message: " + msg['data'].decode('utf-8'))
+
+    def stop(self) -> None:
+        self._redis_pubsub.close()
+
+        super().stop()

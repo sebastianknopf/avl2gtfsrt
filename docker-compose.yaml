@@ -16,6 +16,20 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+  avl2gtfsrt-redis:
+    image: redis:latest
+    restart: unless-stopped
+    profiles:
+      - server
+      - publisher
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
   avl2gtfsrt-worker:
     build:
       context: .
@@ -49,6 +63,8 @@ services:
       - A2G_SHAPE_FILTER_DISTANCE_METERS
     depends_on:
       "avl2gtfsrt-mongodb":
+        condition: service_healthy
+      "avl2gtfsrt-redis":
         condition: service_healthy
   avl2gtfsrt-server:
     build:
@@ -84,4 +100,6 @@ services:
       - A2G_PUBLISHER_CONFIG
     depends_on:
       "avl2gtfsrt-mongodb":
+        condition: service_healthy
+      "avl2gtfsrt-redis":
         condition: service_healthy
