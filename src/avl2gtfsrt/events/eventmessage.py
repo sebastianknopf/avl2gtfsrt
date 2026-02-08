@@ -16,6 +16,19 @@ class EventMessage:
         self.vehicle_id: str = vehicle_id
         self.timestamp: int = int(datetime.now(timezone.utc).timestamp())
 
+    @classmethod
+    def create(cls, data: str) -> 'EventMessage':
+        event_data: dict = json.loads(data)
+
+        event_message: EventMessage = EventMessage(
+            event_type=event_data['event_type'],
+            vehicle_id=event_data['vehicle_id']
+        )
+
+        event_message.timestamp = event_data['timestamp']
+
+        return event_message
+
     def __str__(self) -> str:
         event_data: dict = {
             'event_type': self.event_type,
