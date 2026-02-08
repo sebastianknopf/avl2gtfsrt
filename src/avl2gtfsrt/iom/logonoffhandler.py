@@ -11,6 +11,7 @@ from avl2gtfsrt.iom.basehandler import AbstractRequestResponseHandler
 from avl2gtfsrt.model.types import Vehicle, VehicleActivity, VehicleCache
 from avl2gtfsrt.objectstorage import ObjectStorage
 from avl2gtfsrt.events.eventpublisher import EventPublisher
+from avl2gtfsrt.events.eventmessage import EventMessage
 
 
 class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
@@ -34,6 +35,7 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
             vehicle.cache = VehicleCache()
 
             self._storage.update_vehicle(vehicle)
+            self._event_stream.publish(EventMessage(EventMessage.TECHNICAL_VEHICLE_LOG_ON, vehicle_ref))
 
             response: TechnicalVehicleLogOnResponseStructure = TechnicalVehicleLogOnResponseStructure()
             response.technical_vehicle_log_on_response_data = TechnicalVehicleLogOnResponseDataStructure()
@@ -71,6 +73,7 @@ class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
             vehicle.cache = None
 
             self._storage.update_vehicle(vehicle)
+            self._event_stream.publish(EventMessage(EventMessage.TECHNICAL_VEHICLE_LOG_OFF, vehicle_ref))
 
             response: TechnicalVehicleLogOffResponseStructure = TechnicalVehicleLogOffResponseStructure()
             response.technical_vehicle_log_off_response_data = TechnicalVehicleLogOffResponseDataStructure()

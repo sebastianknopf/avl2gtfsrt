@@ -17,6 +17,7 @@ from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
 from avl2gtfsrt.objectstorage import ObjectStorage
 from avl2gtfsrt.events.eventpublisher import EventPublisher
+from avl2gtfsrt.events.eventmessage import EventMessage
 
 
 class GnssPhysicalPositionHandler(AbstractHandler):
@@ -57,6 +58,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
         ))
 
         self._storage.update_vehicle(vehicle)
+        self._event_stream.publish(EventMessage(EventMessage.GNSS_PHYSICAL_POSITION_UPDATE, vehicle_ref))
 
         logging.info(f"{self.__class__.__name__}: Processed GNSS data update for vehicle {vehicle_ref} successfully.")
 
@@ -167,8 +169,9 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                             # finally update vehicle data
                             self._storage.update_vehicle(vehicle)
-
                             self._storage.update_trip(trip_candidate)
+
+                            self._event_stream.publish(EventMessage(EventMessage.OPERATIONAL_VEHICLE_LOG_ON, vehicle_ref))
                             
                 else:
                     logging.debug(f"{self.__class__.__name__} Vehicle {vehicle_ref} is operationally logged on. Verifying current trip ...")
@@ -223,6 +226,10 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             # when it has reached the final stop as indicated above
                             vehicle.activity.gnss_positions = []
 
+                            # finally store updated vehicle data into the object storage
+                            self._storage.update_vehicle(vehicle)
+                            self._event_stream.publish(EventMessage(EventMessage.OPERATIONAL_VEHICLE_LOG_OFF, vehicle_ref))
+
                     # if there're too many failures, perform a log off and delete trip descriptor
                     max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '5'))
                     if vehicle.activity.trip_candidate_failures >= max_failures:
@@ -233,5 +240,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.trip_descriptor = None
                             vehicle.activity.trip_metrics = None
 
-                    # finally store updated vehicle data into the object storage
-                    self._storage.update_vehicle(vehicle)
+                            # finally store updated vehicle data into the object storage
+                            self._storage.update_vehicle(vehicle)
+                            self._event_stream.publish(EventMessage(EventMessage.OPERATIONAL_VEHICLE_LOG_OFF, vehicle_ref))
+
+                
