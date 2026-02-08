@@ -7,6 +7,7 @@ from typing import cast
 
 from avl2gtfsrt.avl.avlmatcher import AvlMatcher
 from avl2gtfsrt.avl.spatialvector import SpatialVectorCollection
+from avl2gtfsrt.common.env import is_set
 from avl2gtfsrt.common.mqtt import get_tls_value
 from avl2gtfsrt.common.shared import unixtimestamp
 from avl2gtfsrt.iom.basehandler import AbstractHandler
@@ -109,7 +110,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # rund AVL matcher
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
-                        trip_candidates
+                        trip_candidates,
+                        False
                     )
                     
                     result: tuple[bool, dict] = matcher.match(
@@ -169,10 +171,12 @@ class GnssPhysicalPositionHandler(AbstractHandler):
 
                     matcher: AvlMatcher = AvlMatcher(
                         self._storage,
-                        [current_trip]
+                        [current_trip],
+                        is_set('A2G_SHAPE_FILTER_ENABLED'),
+                        int(os.getenv('A2G_SHAPE_FILTER_DISTANCE_METERS', '50'))
                     )
 
-                    trip_matches: dict[str, bool] = matcher.test(
+                    trip_matches: bool = matcher.test(
                         vehicle,
                         vehicle.activity.gnss_positions
                     )
@@ -180,7 +184,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                     # update vehicle activity ...                    
                     # if the trip matches, reset failure counter
                     # otherwise increment the counter
-                    if trip_matches[current_trip_id]:
+                    if trip_matches:
                         vehicle.activity.trip_candidate_failures = 0
 
                         trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
@@ -189,10 +193,13 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                         )
 
                         vehicle.activity.trip_metrics = trip_metrics[current_trip_id]
+
                     else:
                         vehicle.activity.trip_candidate_failures = vehicle.activity.trip_candidate_failures + 1
 
-                    self._storage.update_vehicle(vehicle)
+                    # udpated GNSS position with filtered positon if shape filtering is enabled
+                    if is_set('A2G_SHAPE_FILTER_ENABLED') and matcher.matched_vehicle_position is not None:
+                        vehicle.activity.gnss_positions[-1] = matcher.matched_vehicle_position
                     
                     # if the vehicle arrived at the last stop of the journey, 
                     # perform a log off and delete trip descriptor
@@ -209,10 +216,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             # when it has reached the final stop as indicated above
                             vehicle.activity.gnss_positions = []
 
-                            self._storage.update_vehicle(vehicle)
-
                     # if there're too many failures, perform a log off and delete trip descriptor
-                    max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '3'))
+                    max_failures: int = int(os.getenv('A2G_MATCHING_MAX_FAILURES', '5'))
                     if vehicle.activity.trip_candidate_failures >= max_failures:
                         if vehicle.is_operationally_logged_on:
                             logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
@@ -221,4 +226,5 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.trip_descriptor = None
                             vehicle.activity.trip_metrics = None
 
-                            self._storage.update_vehicle(vehicle)
+                    # finally store updated vehicle data into the object storage
+                    self._storage.update_vehicle(vehicle)

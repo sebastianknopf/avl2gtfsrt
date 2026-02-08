@@ -22,6 +22,7 @@ class SpatialMatch:
 
         # containers for later calculated data
         self.match_score: float = 0.0
+        self.spatial_progress_distance: float|None = None
         self.spatial_progress_percentage: float|None = None
     
     def calculate_match_score(self, vehicle_movement: SpatialVectorCollection) -> float:
@@ -30,7 +31,8 @@ class SpatialMatch:
         movement_coords = [web_mercator(Point(*c)) for c in movement_coords]
 
         # calculate percentual progress of the trip determined by position
-        self.spatial_progress_percentage = self._trip_shape.project(movement_coords[-1]) / self._trip_shape.length * 100.0
+        self.spatial_progress_distance = self._trip_shape.project(movement_coords[-1])
+        self.spatial_progress_percentage = self.spatial_progress_distance / self._trip_shape.length * 100.0
 
         # check if the GNSS coordinate activty matches the trip candidate
         num_points_matching: int = sum(1 for c in movement_coords if self._buffered_trip_shape.covers(c))
