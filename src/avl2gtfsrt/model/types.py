@@ -15,6 +15,7 @@ class Vehicle:
     is_operationally_logged_on: bool = False
     activity: Optional[VehicleActivity] = None
     cache: Optional[VehicleCache] = None
+    is_differential_deleted: bool = False
 
 @dataclass
 class VehicleActivity:
@@ -48,6 +49,7 @@ class Trip:
     descriptor: TripDescriptor
     shape_polyline: str
     stop_times: list[StopTime] = field(default_factory=list)
+    is_differential_deleted: bool = False
 
 @dataclass
 class TripDescriptor:

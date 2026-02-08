@@ -57,11 +57,6 @@ class GnssPhysicalPositionHandler(AbstractHandler):
             longitude=longitude
         ))
 
-        self._storage.update_vehicle(vehicle)
-        self._event_stream.publish(EventMessage(EventMessage.GNSS_PHYSICAL_POSITION_UPDATE, vehicle_ref))
-
-        logging.info(f"{self.__class__.__name__}: Processed GNSS data update for vehicle {vehicle_ref} successfully.")
-
         # run all other processing steps
         
         # check whether AVL processing is enabled
@@ -160,7 +155,7 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.trip_descriptor = trip_candidate.descriptor
                             
                             # predict trip metrics
-                            trip_metrics: dict[TripMetrics] = matcher.predict_trip_metrics(
+                            trip_metrics: dict[str, TripMetrics] = matcher.predict_trip_metrics(
                                 vehicle,
                                 vehicle.activity.gnss_positions[-1]
                             )
@@ -168,6 +163,8 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             vehicle.activity.trip_metrics = trip_metrics[trip_candidate_id]
 
                             # finally update vehicle data
+                            trip_candidate.is_differential_deleted = False
+
                             self._storage.update_vehicle(vehicle)
                             self._storage.update_trip(trip_candidate)
 
@@ -218,16 +215,22 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             logging.info(f"{self.__class__.__name__}: Vehicle arrived at last stop. Performing operational log off ...")
                             
                             vehicle.is_operationally_logged_on = False
-                            vehicle.activity.trip_descriptor = None
-                            vehicle.activity.trip_metrics = None
+                            #vehicle.activity.trip_descriptor = None
+                            #vehicle.activity.trip_metrics = None
+                            # ^^^ leave trip_descriptor and trip_metrics for the option to send differential GTFS-RT updates
+                            # GtfsRealtimeExport runs a separate cleanup method for that
 
-                            # delete also GNSS position history in order to avoid a 
+                            # delete also GNSS position history until last known position in order to avoid a 
                             # re-assignment to the last trip with the next GNSS update, 
                             # when it has reached the final stop as indicated above
-                            vehicle.activity.gnss_positions = []
+                            vehicle.activity.gnss_positions = [vehicle.activity.gnss_positions[-1]]
 
                             # finally store updated vehicle data into the object storage
+                            current_trip.is_differential_deleted = True
+
                             self._storage.update_vehicle(vehicle)
+                            self._storage.update_trip(current_trip)
+
                             self._event_stream.publish(EventMessage(EventMessage.OPERATIONAL_VEHICLE_LOG_OFF, vehicle_ref))
 
                     # if there're too many failures, perform a log off and delete trip descriptor
@@ -237,11 +240,20 @@ class GnssPhysicalPositionHandler(AbstractHandler):
                             logging.info(f"{self.__class__.__name__}: Vehicle does not match its current trip anymore. Performing operational log off ...")
                             
                             vehicle.is_operationally_logged_on = False
-                            vehicle.activity.trip_descriptor = None
-                            vehicle.activity.trip_metrics = None
+                            #vehicle.activity.trip_descriptor = None
+                            #vehicle.activity.trip_metrics = None
+                            # ^^^ leave trip_descriptor and trip_metrics for the option to send differential GTFS-RT updates
+                            # GtfsRealtimeExport runs a separate cleanup method for that
 
                             # finally store updated vehicle data into the object storage
+                            current_trip.is_differential_deleted = True
+
                             self._storage.update_vehicle(vehicle)
+                            self._storage.update_trip(current_trip)
+
                             self._event_stream.publish(EventMessage(EventMessage.OPERATIONAL_VEHICLE_LOG_OFF, vehicle_ref))
 
-                
+        # save update vehicle data and 
+        logging.info(f"{self.__class__.__name__}: Processed GNSS data update for vehicle {vehicle_ref} successfully.")
+        self._storage.update_vehicle(vehicle)
+        self._event_stream.publish(EventMessage(EventMessage.GNSS_PHYSICAL_POSITION_UPDATE, vehicle_ref))

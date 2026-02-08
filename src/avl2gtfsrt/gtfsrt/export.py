@@ -17,108 +17,114 @@ class GtfsRealtimeExport():
     def __init__(self, object_storage: ObjectStorage):
         self._object_storage = object_storage
 
-    def _create_feed_message(self, data: list, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
-        timestamp = datetime.now().astimezone(pytz.timezone(os.getenv('A2G_SERVER_TIMEZONE', 'Europe/Berlin'))).timestamp()
-        timestamp = floor(timestamp)
-        
-        feed_message: dict = {
-            'header': {
-                'gtfs_realtime_version': '2.0',
-                'incrementality': 'FULL_DATASET',
-                'timestamp': timestamp
-            },
-            'entity': data
-        }
-        
-        if debug:
-            json_result: str = json.dumps(feed_message, indent=4)
-
-            return json_result
-        else:
-            pbf_result: bytes = ParseDict(feed_message, gtfs_realtime_pb2.FeedMessage()).SerializeToString()
-
-            return pbf_result
-    
-    def export_full_vehicle_positions(self, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+    def _extract_vehicle_positions(self, vehicle_id: str|None = None) -> list[dict]:
         entities: list[dict] = list()
         
         vehicles: list[Vehicle] = self._object_storage.get_vehicles()
         for vehicle in vehicles:
-            if vehicle.is_technically_logged_on:
-                vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if len(vehicle.activity.gnss_positions) > 0 else None
-                if vehicle_position is not None:
-                    entity: dict = {
-                        'id': vehicle.vehicle_ref,
+            # assume we want a differential export
+            # bring up only vehicles matching the vehicle ID
+            if vehicle_id is not None and vehicle.vehicle_ref != vehicle_id:
+                continue
+
+            # assume we don't want a differential export
+            # filter out vehicles which are marked as deleted
+            if vehicle_id is None and vehicle.is_differential_deleted:
+                continue
+
+            # filter out vehicles which are not technically logged on
+            if vehicle_id is None and not vehicle.is_technically_logged_on:
+                continue
+
+            vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if vehicle.activity is not None and vehicle.activity.gnss_positions is not None and len(vehicle.activity.gnss_positions) > 0 else None
+            if vehicle_position is not None:
+                entity: dict = {
+                    'id': vehicle.vehicle_ref,
+                    'is_deleted': vehicle.is_differential_deleted,
+                    'vehicle': {
+                        'timestamp': vehicle_position.timestamp, 
                         'vehicle': {
-                            'timestamp': vehicle_position.timestamp, 
-                            'vehicle': {
-                                'id': vehicle.vehicle_ref,
-                                'label': vehicle.vehicle_ref,
-                                'licensePlate': vehicle.vehicle_ref
-                            },
-                            'position': {
-                                'latitude': vehicle_position.latitude,
-                                'longitude': vehicle_position.longitude
-                            }
+                            'id': vehicle.vehicle_ref,
+                            'label': vehicle.vehicle_ref,
+                            'licensePlate': vehicle.vehicle_ref
+                        },
+                        'position': {
+                            'latitude': vehicle_position.latitude,
+                            'longitude': vehicle_position.longitude
                         }
                     }
+                }
 
-                    if vehicle.is_operationally_logged_on:                        
-                        vehicle_trip_descriptor: TripDescriptor = vehicle.activity.trip_descriptor
-                        if vehicle_trip_descriptor is not None:
-                            entity['vehicle']['trip'] = {
-                                'trip_id': strip_feed_id(vehicle_trip_descriptor.trip_id),
-                                'route_id': strip_feed_id(vehicle_trip_descriptor.route_id),
-                                'start_time': vehicle_trip_descriptor.start_time,
-                                'start_date': vehicle_trip_descriptor.start_date
-                            }
+                if vehicle.is_operationally_logged_on:                        
+                    vehicle_trip_descriptor: TripDescriptor = vehicle.activity.trip_descriptor
+                    if vehicle_trip_descriptor is not None:
+                        entity['vehicle']['trip'] = {
+                            'trip_id': strip_feed_id(vehicle_trip_descriptor.trip_id),
+                            'route_id': strip_feed_id(vehicle_trip_descriptor.route_id),
+                            'start_time': vehicle_trip_descriptor.start_time,
+                            'start_date': vehicle_trip_descriptor.start_date
+                        }
 
-                        vehicle_trip_metrics: TripMetrics = vehicle.activity.trip_metrics
-                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_sequence is not None:
-                            entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_sequence
+                    vehicle_trip_metrics: TripMetrics = vehicle.activity.trip_metrics
+                    if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_sequence is not None:
+                        entity['vehicle']['currentStopSequence'] = vehicle_trip_metrics.next_stop_sequence
 
-                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.current_stop_status is not None:
-                            entity['vehicle']['currentStatus'] = vehicle_trip_metrics.current_stop_status
+                    if vehicle_trip_metrics is not None and vehicle_trip_metrics.current_stop_status is not None:
+                        entity['vehicle']['currentStatus'] = vehicle_trip_metrics.current_stop_status
 
-                        if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
-                            entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
-            
-                    entities.append(entity)
+                    if vehicle_trip_metrics is not None and vehicle_trip_metrics.next_stop_id is not None:
+                        entity['vehicle']['stopId'] = strip_feed_id(vehicle_trip_metrics.next_stop_id)
+        
+                entities.append(entity)
 
-        return self._create_feed_message(entities, debug)
-    
-    def export_full_trip_updates(self, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        return entities
+
+    def _extract_trip_updates(self, vehicle_id: str|None = None) -> list[dict]:
         entities: list[dict] = list()
         
         vehicles: list[Vehicle] = self._object_storage.get_vehicles()
         for vehicle in vehicles:
-            if vehicle.is_technically_logged_on and vehicle.is_operationally_logged_on and vehicle.activity.trip_metrics is not None:
-                
-                trip: Trip = self._object_storage.get_trip(vehicle.activity.trip_descriptor.trip_id)
-                vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if len(vehicle.activity.gnss_positions) > 0 else None
-                
-                if trip is not None:
-                    entity: dict = {
-                        'id': strip_feed_id(trip.descriptor.trip_id),
-                        'trip_update': {
-                            'timestamp': vehicle_position.timestamp, 
-                            'trip': {
-                                'trip_id': strip_feed_id(trip.descriptor.trip_id),
-                                'route_id': strip_feed_id(trip.descriptor.route_id),
-                                'start_time': trip.descriptor.start_time,
-                                'start_date': trip.descriptor.start_date
-                            },
-                            'vehicle': {
-                                'id': vehicle.vehicle_ref,
-                                'label': vehicle.vehicle_ref,
-                                'licensePlate': vehicle.vehicle_ref
-                            },
-                            'stop_time_update': list()
-                        }
-                    }
 
-                    # generate StopTimeUpdates for each upcoming stop
-                    # extract current_delay into a single variable as it may be modified during processing
+            # assume we want a differential export
+            # bring up only vehicles matching the vehicle ID
+            if vehicle_id is not None and vehicle.vehicle_ref != vehicle_id:
+                continue
+
+            # assume we don't want a differential export
+            # filter out vehicles which are not technically logged on
+            if vehicle_id is None and (not vehicle.is_technically_logged_on or not vehicle.is_operationally_logged_on or vehicle.activity.trip_metrics is None):
+                continue
+
+            if vehicle.activity is None or vehicle.activity.trip_descriptor is None:
+                continue
+
+            trip: Trip = self._object_storage.get_trip(vehicle.activity.trip_descriptor.trip_id)
+            vehicle_position: GnssPosition = vehicle.activity.gnss_positions[-1] if vehicle.activity is not None and vehicle.activity.gnss_positions is not None and len(vehicle.activity.gnss_positions) > 0 else None
+
+            if trip is not None:
+                entity: dict = {
+                    'id': strip_feed_id(trip.descriptor.trip_id),
+                    'is_deleted': trip.is_differential_deleted,
+                    'trip_update': {
+                        'timestamp': vehicle_position.timestamp if vehicle_position is not None else int(datetime.now().timestamp()), 
+                        'trip': {
+                            'trip_id': strip_feed_id(trip.descriptor.trip_id),
+                            'route_id': strip_feed_id(trip.descriptor.route_id),
+                            'start_time': trip.descriptor.start_time,
+                            'start_date': trip.descriptor.start_date
+                        },
+                        'vehicle': {
+                            'id': vehicle.vehicle_ref,
+                            'label': vehicle.vehicle_ref,
+                            'licensePlate': vehicle.vehicle_ref
+                        },
+                        'stop_time_update': list()
+                    }
+                }
+
+                # generate StopTimeUpdates for each upcoming stop
+                # extract current_delay into a single variable as it may be modified during processing
+                if not trip.is_differential_deleted:
                     current_delay: int = vehicle.activity.trip_metrics.current_delay
                     for stop_time in trip.stop_times:
                         # we only want to see upcoming stops, so filter for all stops where stop_sequence
@@ -170,6 +176,49 @@ class GtfsRealtimeExport():
 
                         entity['trip_update']['stop_time_update'].append(stop_time_update)
 
-                    entities.append(entity)
+                entities.append(entity)
 
-        return self._create_feed_message(entities, debug)
+            # after sending a differential update, delete the trip and the trip descriptor of the vehicle
+            if vehicle_id is not None and trip.is_differential_deleted:
+                self._object_storage.cleanup_vehicle_trip_refs(vehicle)
+                self._object_storage.delete_trip(trip)
+
+        return entities
+    
+    def _create_feed_message(self, data: list, differential: bool = False, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        timestamp = datetime.now().astimezone(pytz.timezone(os.getenv('A2G_SERVER_TIMEZONE', 'Europe/Berlin'))).timestamp()
+        timestamp = floor(timestamp)
+        
+        feed_message: dict = {
+            'header': {
+                'gtfs_realtime_version': '2.0',
+                'incrementality': 'DIFFERENTIAL' if differential else 'FULL_DATASET',
+                'timestamp': timestamp
+            },
+            'entity': data
+        }
+        
+        if debug:
+            json_result: str = json.dumps(feed_message, indent=4)
+
+            return json_result
+        else:
+            pbf_result: bytes = ParseDict(feed_message, gtfs_realtime_pb2.FeedMessage()).SerializeToString()
+
+            return pbf_result
+    
+    def export_full_vehicle_positions(self, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        vehicle_positions: list[dict] = self._extract_vehicle_positions()
+        return self._create_feed_message(vehicle_positions, False, debug)
+
+    def export_differential_vehicle_positions(self, vehicle_id: str, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        vehicle_positions: list[dict] = self._extract_vehicle_positions(vehicle_id)
+        return self._create_feed_message(vehicle_positions, True, debug)
+
+    def export_full_trip_updates(self, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        trip_updates: list[dict] = self._extract_trip_updates()
+        return self._create_feed_message(trip_updates, False, debug)
+    
+    def export_differential_trip_updates(self, vehicle_id: str, debug: bool = False) -> gtfs_realtime_pb2.FeedMessage|str:
+        trip_updates: list[dict] = self._extract_trip_updates(vehicle_id)
+        return self._create_feed_message(trip_updates, True, debug)
