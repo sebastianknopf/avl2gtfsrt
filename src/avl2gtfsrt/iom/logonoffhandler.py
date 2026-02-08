@@ -9,9 +9,16 @@ from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffRequestStructure, Techni
 from avl2gtfsrt.vdv.vdv435 import TechnicalVehicleLogOffResponseDataStructure, TechnicalVehicleLogOffResponseErrorStructure
 from avl2gtfsrt.iom.basehandler import AbstractRequestResponseHandler
 from avl2gtfsrt.model.types import Vehicle, VehicleActivity, VehicleCache
+from avl2gtfsrt.objectstorage import ObjectStorage
+from avl2gtfsrt.events.eventpublisher import EventPublisher
 
 
 class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
+    def __init__(self, object_storage: ObjectStorage, event_stream: EventPublisher) -> None:
+        super().__init__(object_storage)
+
+        self._event_stream = event_stream
+    
     def handle_request(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
         msg = cast(TechnicalVehicleLogOnRequestStructure, msg)
         
@@ -46,6 +53,11 @@ class TechnicalVehicleLogOnHandler(AbstractRequestResponseHandler):
             return response
         
 class TechnicalVehicleLogOffHandler(AbstractRequestResponseHandler):
+    def __init__(self, object_storage: ObjectStorage, event_stream: EventPublisher) -> None:
+        super().__init__(object_storage)
+
+        self._event_stream = event_stream
+    
     def handle_request(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
         msg = cast(TechnicalVehicleLogOffRequestStructure, msg)
         

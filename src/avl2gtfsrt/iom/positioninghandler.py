@@ -15,9 +15,16 @@ from avl2gtfsrt.model.types import Trip, GnssPosition, Vehicle, TripMetrics
 from avl2gtfsrt.nominal.dataclient import NominalDataClient
 from avl2gtfsrt.vdv.vdv435 import AbstractBasicStructure
 from avl2gtfsrt.vdv.vdv435 import GnssPhysicalPositionDataStructure
+from avl2gtfsrt.objectstorage import ObjectStorage
+from avl2gtfsrt.events.eventpublisher import EventPublisher
 
 
 class GnssPhysicalPositionHandler(AbstractHandler):
+
+    def __init__(self, object_storage: ObjectStorage, event_stream: EventPublisher) -> None:
+        super().__init__(object_storage)
+
+        self._event_stream = event_stream
 
     def handle(self, topic: str, msg: AbstractBasicStructure) -> None:
         msg = cast(GnssPhysicalPositionDataStructure, msg)
