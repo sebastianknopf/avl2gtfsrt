@@ -94,6 +94,7 @@ services:
       - publisher
     environment:
       - A2G_DEBUG
+      - A2G_ORGANISATION_ID
       - A2G_MONGODB_USERNAME
       - A2G_MONGODB_PASSWORD
       - A2G_PUBLISHER_TIMEZONE
