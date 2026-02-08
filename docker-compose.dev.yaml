@@ -11,3 +11,10 @@ services:
     command: "python -m debugpy --listen 0.0.0.0:5679 --wait-for-client -m avl2gtfsrt server"
     ports:
       - "5679:5679"
+
+  avl2gtfsrt-publisher:
+    environment:
+      - PYTHONPATH=src
+    command: "python -m debugpy --listen 0.0.0.0:5680 --wait-for-client -m avl2gtfsrt publisher"
+    ports:
+      - "5680:5680"

@@ -2,6 +2,9 @@ services:
   avl2gtfsrt-mongodb:
     image: mongo:latest
     restart: unless-stopped
+    profiles:
+      - server
+      - publisher
     expose:
       - "27017"
     environment:
@@ -19,6 +22,9 @@ services:
       dockerfile: ./Dockerfile
     restart: unless-stopped
     command: "python -m avl2gtfsrt worker"
+    profiles:
+      - server
+      - publisher
     environment:
       - A2G_DEBUG
       - A2G_TIMEZONE
@@ -50,6 +56,8 @@ services:
       dockerfile: ./Dockerfile
     restart: unless-stopped
     command: "python -m avl2gtfsrt server"
+    profiles:
+      - server
     ports:
       - "${A2G_SERVER_PORT:-9000}:9000"
     environment:
@@ -57,6 +65,23 @@ services:
       - A2G_MONGODB_USERNAME
       - A2G_MONGODB_PASSWORD
       - A2G_SERVER_TIMEZONE
+    depends_on:
+      "avl2gtfsrt-mongodb":
+        condition: service_healthy
+  avl2gtfsrt-publisher:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: unless-stopped
+    command: "python -m avl2gtfsrt publisher"
+    profiles:
+      - publisher
+    environment:
+      - A2G_DEBUG
+      - A2G_MONGODB_USERNAME
+      - A2G_MONGODB_PASSWORD
+      - A2G_PUBLISHER_TIMEZONE
+      - A2G_PUBLISHER_CONFIG
     depends_on:
       "avl2gtfsrt-mongodb":
         condition: service_healthy
