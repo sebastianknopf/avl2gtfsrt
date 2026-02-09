@@ -70,7 +70,7 @@ class GtfsRealtimePublisher:
         if self._method == 'mqtt':
             topic: str = self._config.get('topic', 'gtfsrt/{dataType}/{vehicleId}')
             topic = topic.format(
-                organisationId=self._organisation_id,
+                organisationId=self._organisation_id.lower(),
                 dataType=data_type,
                 vehicleId=vehicle_id
             )
