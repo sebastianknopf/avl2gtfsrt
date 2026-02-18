@@ -81,24 +81,14 @@ class GtfsRealtimePublisher:
         elif self._method == 'post':
             raise NotImplementedError()
 
-    def _on_event_message(self, message: EventMessage):
+    def _on_event_message(self, message: EventMessage) -> None:
         logging.info(f"{self.__class__.__name__}: Received message {message}")
 
+        debug_flag: bool = self._config.get('debug', False)
         gtfsrt_export: GtfsRealtimeExport = GtfsRealtimeExport(self._object_storage)
 
-        if message.event_type == EventMessage.TECHNICAL_VEHICLE_LOG_ON:
-            pass
-        elif message.event_type == EventMessage.TECHNICAL_VEHICLE_LOG_OFF:
-            pass
-        elif message.event_type == EventMessage.OPERATIONAL_VEHICLE_LOG_ON:
-            pass
-        elif message.event_type == EventMessage.OPERATIONAL_VEHICLE_LOG_OFF:
-            pass
-        elif message.event_type == EventMessage.GNSS_PHYSICAL_POSITION_UPDATE:
-            pass
-    
-        self._send(message.vehicle_id, 'vehiclepositions', gtfsrt_export.export_differential_vehicle_positions(message.vehicle_id, debug=True))
-        self._send(message.vehicle_id, 'tripupdates', gtfsrt_export.export_differential_trip_updates(vehicle_id=message.vehicle_id, debug=True))
+        self._send(message.vehicle_id, 'vehiclepositions', gtfsrt_export.export_differential_vehicle_positions(message.vehicle_id, debug=debug_flag))
+        self._send(message.vehicle_id, 'tripupdates', gtfsrt_export.export_differential_trip_updates(vehicle_id=message.vehicle_id, debug=debug_flag))
     
     def run(self):
 
