@@ -2,9 +2,25 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "avl2gtfsrt-dev",
+            "label": "avl2gtfsrt-server-dev",
             "type": "shell",
-            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env up -d --build",
+            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env --profile server up -d --build",
+            "group": "build",
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "avl2gtfsrt-publisher-dev",
+            "type": "shell",
+            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env --profile publisher up -d --build",
+            "group": "build",
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "avl2gtfsrt-full-dev",
+            "type": "shell",
+            "command": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --env-file dev.env --profile server --profile publisher up -d --build",
             "group": "build",
             "problemMatcher": [],
             "isBackground": true
