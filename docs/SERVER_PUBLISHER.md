@@ -17,7 +17,7 @@ After that, you can find the endpoint for vehicle positions at `http://localhost
 ## GTFS-RT Publisher
 Additionally to the regular server, there's a publisher available. The publisher is useful, if you want to publish GTFS-RT in realtime to other systems. There're different methods configurable. Currently, following methods are available:
 
-- MQTT (method name in config: `mqtt`)
+- MQTT for retained differential GTFS-RT messages (method name in config: `mqtt`)
 
 The publisher receives an event over the integrated `redis` container and then triggers a GTFS-RT export of the current database and publishes the data to the configured endpoint.
 
