@@ -54,7 +54,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/util/simulation.py",
-            "args": ["${input:simulationLineName}", "${input:simulationOrganisationId}"],
+            "args": ["${input:simulationLineName}", "${input:simulationOrganisationId}", "${input:vehicleId}", "${input:simulationId}"],
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/dev.env"
@@ -71,6 +71,18 @@
             "type": "promptString",
             "default": "TEST",
             "description": "Enter the organisation ID to start the simulation"
+        },
+        {
+            "id": "vehicleId",
+            "type": "promptString",
+            "default": "TE-ST999",
+            "description": "Enter the vehicle ID to start the simulation"
+        },
+        {
+            "id": "simulationId",
+            "type": "promptString",
+            "default": "1",
+            "description": "Enter the simulation ID to start the simulation"
         }
     ]
 }
