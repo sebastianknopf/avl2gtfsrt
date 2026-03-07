@@ -249,14 +249,15 @@ if __name__ == "__main__":
     logging.basicConfig(format="[%(levelname)s] %(asctime)s %(message)s", level=logging.INFO)
 
     # set general publishing data
-    vehicle_ref = 'TE-ST3'
+    simulation_id = sys.argv[4]
+    vehicle_ref = sys.argv[3]
     simulation_line_number: str = sys.argv[1]
     organisation_id: str = sys.argv[2]
 
     logging.info(f'Starting simulation for vehicle {vehicle_ref} on line {simulation_line_number} ...')
     logging.info(f'STOP THE SIMULATION ONLY BY USING CTRL+C IN ORDER TO PERFORM CLEANUP LOGIC')
 
-    client: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id='avl2gtfsrt-simulation')
+    client: mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id=f"avl2gtfsrt-simulation-{simulation_id}")
 
     mqtt_username: str = os.getenv('A2G_WORKER_MQTT_USERNAME', None)
     mqtt_password: str = os.getenv('A2G_WORKER_MQTT_PASSWORD', None)
