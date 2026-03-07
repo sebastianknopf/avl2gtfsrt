@@ -60,7 +60,7 @@ docker compose --profile server up --build -d
 
 Afterwards, you can open `http://localhost:9000/vehicle-positions.pbf?debug` oder `http://localhost:9000/trip-updates.pbf?debug` in your browser for seeing the JSON representation of the GTFS-RT data.
 
-As an alternative to the regular GTFS-RT server, there's also an option for publishing differential GTFS-RT updates to a MQTT broker. To start in publisher mode, make sure a publisher is configured and start with:
+As an alternative to the regular GTFS-RT server, there's also an option for publishing differential GTFS-RT updates to a MQTT broker with retained messages. To start in publisher mode, make sure a publisher is configured and start with:
 
 ```bash
 docker compose --profile publisher up --build -d
