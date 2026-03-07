@@ -75,7 +75,7 @@ class GtfsRealtimePublisher:
                 vehicleId=vehicle_id
             )
 
-            self._mqtt.publish(topic, message, qos=0)
+            self._mqtt.publish(topic, message, retain=True, qos=1)
         elif self._method == 'get':
             raise NotImplementedError()
         elif self._method == 'post':
