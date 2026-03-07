@@ -47,15 +47,28 @@ A2G_NOMINAL_CACHING_ENABLED=true
 
 A2G_SERVER_TIMEZONE=Europe/Berlin
 A2G_SERVER_PORT=9000
+
+A2G_PUBLISHER_TIMEZONE=Europe/Berlin
+A2G_PUBLISHER_CONFIG={"method": "mqtt", "endpoint": "mqtt.yourdomain.com", "username": "username", "password": "password", "port": "1883", "debug": true, "topic": "gtfsrt/{dataType}/{vehicleId}"}
 ```
 
 After successful configuration, simply start the service with:
 
 ```bash
-docker compose up --build -d
+docker compose --profile server up --build -d
 ```
 
 Afterwards, you can open `http://localhost:9000/vehicle-positions.pbf?debug` oder `http://localhost:9000/trip-updates.pbf?debug` in your browser for seeing the JSON representation of the GTFS-RT data.
+
+As an alternative to the regular GTFS-RT server, there's also an option for publishing differential GTFS-RT updates to a MQTT broker. To start in publisher mode, make sure a publisher is configured and start with:
+
+```bash
+docker compose --profile publisher up --build -d
+```
+
+Afterwards, you can see the GTFS-RT updates in realtime on your MQTT broker.
+
+See [more information about server and publisher](docs/SERVER_PUBLISHER.md) configuration operation modes.
 
 ## Configuration
 Configuration of the `avl2gtfsrt` service is done using an `.env` file. See [default.env](default.env) for reference.
@@ -85,6 +98,8 @@ Following configuration variables are available:
 | A2G_SHAPE_FILTER_DISTANCE_METERS | _(optional)_ Maximum distance in meters for a raw AVL position away from the trip shape the vehicle is logged on to. Set this way carefully to filter out GNSS noise, but also allow displaying deviations which are not contained in the data. Default is `50`. |
 | A2G_SERVER_TIMEZONE | _(optional)_ Timezone the GTFS-RT server is running in. Default is `Europe/Berlin`. |
 | A2G_SERVER_PORT | _(optional)_ Port the GTFS-RT server is listening to on the host. Default is `9000`. |
+| A2G_PUBLISHER_TIMEZONE | _(optional)_ Timezone the GTFS-RT publisher is running in. Default is `Europe/Berlin`. |
+| A2G_PUBLISHER_CONFIG | _(optional)_ JSON configuration string for the publisher. Requires at least the `method` and the `endpoint` key. All other keys depend on the publisher method which is used. |
 
 ## Client Integration
 For `avl2gtfsrt` to work, you will need some clients sending MQTT data based on VDV435 standard. Those clients are rarely implemented in on-board units in some buses or public transport vehicles. However, most times proprietary protocols and system internal communication networks are used to transmit the actual vehicle position meaning that they cannot simply be used by third-party services.

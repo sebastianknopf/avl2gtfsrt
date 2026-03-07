@@ -21,6 +21,7 @@ dependencies = [
     "pytz",
     "pyyaml",
     "pyproj",
+    "redis",
     "requests",
     "shapely",
     "uvicorn",

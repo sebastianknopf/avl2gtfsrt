@@ -37,6 +37,13 @@ class ObjectStorage:
             upsert=True
         )
 
+    def cleanup_vehicle_trip_refs(self, vehicle: Vehicle) -> None:
+        if vehicle.activity is not None:
+            vehicle.activity.trip_descriptor = None
+            vehicle.activity.trip_metrics = None
+        
+        self.update_vehicle(vehicle)
+
     def get_trips(self) -> list[Trip]:
         data: list = list(self._db.trips.find({}))
 
@@ -55,6 +62,14 @@ class ObjectStorage:
             {'descriptor.trip_id': trip_id},
             {'$set': data},
             upsert=True
+        )
+
+    def delete_trip(self, trip: Trip) -> None:
+        data: dict = serialize(trip)
+        trip_id: str = data['descriptor']['trip_id']
+
+        self._db.trips.delete_one(
+            {'descriptor.trip_id': trip_id}
         )
 
     def _cleanup_vehicle_activity_gnss(self, activity: VehicleActivity) -> VehicleActivity:

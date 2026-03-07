@@ -6,6 +6,7 @@ import time
 
 from concurrent.futures import ThreadPoolExecutor
 
+from avl2gtfsrt.events.eventpublisher import EventPublisher
 from avl2gtfsrt.iom.client import IomClient, IomRole
 from avl2gtfsrt.vdv.vdv435 import *
 from avl2gtfsrt.iom.logonoffhandler import TechnicalVehicleLogOnHandler
@@ -55,6 +56,9 @@ class Worker:
         self._iom.on_technical_vehicle_log_off = self._iom_technical_vehicle_log_off
         self._iom.on_gnss_position_update = self._iom_gnss_position_update
 
+        # create event stream for communication with the publisher
+        self._event_stream: EventPublisher = EventPublisher()
+
         self._should_run = threading.Event()
         self._should_run.set()
 
@@ -71,6 +75,10 @@ class Worker:
         logging.info(f"{self.__class__.__name__}: Initializing IoM ...")
         self._iom.start()
 
+        # startup the event stream
+        logging.info(f"{self.__class__.__name__}: Initializing internal event stream ...")
+        self._event_stream.start()
+
         logging.info(f"{self.__class__.__name__}: Worker startup complete.")
 
         try:
@@ -81,6 +89,9 @@ class Worker:
         except Exception as ex:
             logging.error(f"{self.__class__.__name__}: Exception in worker: {ex}")
         finally:
+
+            logging.info(f"{self.__class__.__name__}: Stopping internal event stream ...")
+            self._event_stream.stop()
 
             logging.info(f"{self.__class__.__name__}: Terminating IoM ...")
             self._iom.terminate()
@@ -94,13 +105,13 @@ class Worker:
             logging.info(f"{self.__class__.__name__}: Worker shutdown complete.")
 
     def _iom_technical_vehicle_log_on(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
-        handler: TechnicalVehicleLogOnHandler = TechnicalVehicleLogOnHandler(self._object_storage)
+        handler: TechnicalVehicleLogOnHandler = TechnicalVehicleLogOnHandler(self._object_storage, self._event_stream)
         return handler.handle_request(msg)
     
     def _iom_technical_vehicle_log_off(self, msg: AbstractBasicStructure) -> AbstractBasicStructure:
-        handler: TechnicalVehicleLogOffHandler = TechnicalVehicleLogOffHandler(self._object_storage)
+        handler: TechnicalVehicleLogOffHandler = TechnicalVehicleLogOffHandler(self._object_storage, self._event_stream)
         return handler.handle_request(msg)
     
     def _iom_gnss_position_update(self, topic: str, msg: AbstractBasicStructure) -> None:
-        handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._object_storage)
+        handler: GnssPhysicalPositionHandler = GnssPhysicalPositionHandler(self._object_storage, self._event_stream)
         handler.handle(topic, msg)
